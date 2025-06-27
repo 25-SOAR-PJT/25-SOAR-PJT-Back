@@ -14,7 +14,7 @@ import lombok.Data;
 public class YouthPolicyBanner {
     @Id
     @Column(name = "project_id")
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "img")
     private String img;

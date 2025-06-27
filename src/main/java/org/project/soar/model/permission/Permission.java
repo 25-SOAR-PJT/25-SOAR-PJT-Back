@@ -32,5 +32,5 @@ class PermissionId implements Serializable {
     private String permissionId;
 
     @Column(name = "user_id")
-    private Integer userId;
+    private String userId;
 }

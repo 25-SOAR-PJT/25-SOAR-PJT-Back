@@ -12,8 +12,8 @@ import lombok.Data;
 public class Field {
     @Id
     @Column(name = "field_id")
-    private Integer fieldId;
+    private String fieldId;
 
     @Column(name = "field_name")
-    private Integer fieldName;
+    private String fieldName;
 }

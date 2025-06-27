@@ -14,7 +14,7 @@ import lombok.Data;
 public class YouthPolicyDetail {
     @Id
     @Column(name = "project_id")
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "info_detail")
     private String infoDetail;

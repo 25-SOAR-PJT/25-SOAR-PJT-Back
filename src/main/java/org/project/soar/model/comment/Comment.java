@@ -16,16 +16,16 @@ import jakarta.persistence.Table;
 public class Comment {
     @Id
     @Column(name = "comment_id")
-    private Integer commentId;
+    private String commentId;
 
     @Column(name = "project_id")
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "comment")
     private String comment;
 
     @Column(name = "user_id")
-    private Integer userId;
+    private String userId;
 
     @ManyToOne
     @JoinColumn(name = "project_id", insertable = false, updatable = false)
