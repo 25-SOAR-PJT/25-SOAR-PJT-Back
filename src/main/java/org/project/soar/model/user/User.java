@@ -12,7 +12,7 @@ import lombok.Data;
 public class User {
     @Id
     @Column(name = "user_id")
-    private Integer userId;
+    private String userId;
 
     private String userName;
     private String userBirthDate;

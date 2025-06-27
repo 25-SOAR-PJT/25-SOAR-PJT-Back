@@ -23,8 +23,8 @@ public class Tag {
 @Data
 class TagId implements Serializable {
     @Column(name = "tag_id")
-    private Integer tagId;
+    private String tagId;
 
     @Column(name = "field_id")
-    private Integer fieldId;
+    private String fieldId;
 }

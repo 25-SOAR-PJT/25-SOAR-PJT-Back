@@ -28,11 +28,11 @@ public class YouthPolicyTag {
 @Embeddable
 @Data
 class YouthPolicyTagId implements Serializable {
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "tag_id")
-    private Integer tagId;
+    private String tagId;
 
     @Column(name = "field_id")
-    private Integer fieldId;
+    private String fieldId;
 }

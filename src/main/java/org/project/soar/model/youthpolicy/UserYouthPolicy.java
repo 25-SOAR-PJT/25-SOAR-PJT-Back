@@ -37,8 +37,8 @@ public class UserYouthPolicy {
 @Data
 class UserYouthPolicyId implements Serializable {
     @Column(name = "project_id")
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "user_id")
-    private Integer userId;
+    private String userId;
 }
