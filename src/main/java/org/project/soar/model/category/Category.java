@@ -1,23 +1,27 @@
 package org.project.soar.model.category;
 
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 import org.project.soar.model.youthpolicy.YouthPolicy;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "Category")
-@Data
+@Table(name = "category")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Category {
-    @Id
-    @Column(name = "category_id")
-    private String categoryId;
 
-    @ManyToOne
-    @JoinColumn(name = "project_id")
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    @Column(name = "category_name", length = 100, nullable = false)
+    private String categoryName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "policy_id", referencedColumnName = "policy_id", nullable = false)
     private YouthPolicy youthPolicy;
 }

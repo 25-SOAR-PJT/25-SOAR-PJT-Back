@@ -1,42 +1,42 @@
 package org.project.soar.model.curationsequence;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 import org.project.soar.model.user.User;
-
+import org.project.soar.global.abstracts.BaseTimeEntity;
 
 @Entity
-@Table(name = "CurationSequence")
-@Data
-public class CurationSequence {
-    @Id
-    @Column(name = "seq_id")
-    private String seqId;
+@Table(name = "curation_sequence")
+@Getter
+@Setter
 
-    @Column(name = "seq_residence")
+@Builder
+public class CurationSequence extends BaseTimeEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "seq_id")
+    private Long seqId;
+
+    @Column(name = "seq_residence", length = 100)
     private String seqResidence;
 
-    @Column(name = "seq_occupation")
+    @Column(name = "seq_occupation", length = 100)
     private String seqOccupation;
 
-    @Column(name = "seq_education_level")
+    @Column(name = "seq_education_level", length = 50)
     private String seqEducationLevel;
 
-    @Column(name = "seq_additional_criteria")
+    @Column(name = "seq_additional_criteria", length = 200)
     private String seqAdditionalCriteria;
 
-    @Column(name = "seq_income_bracket")
+    @Column(name = "seq_income_bracket", length = 50)
     private String seqIncomeBracket;
 
-    @Column(name = "seq_keywords")
+    @Column(name = "seq_keywords", length = 500)
     private String seqKeywords;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }

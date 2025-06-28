@@ -2,29 +2,26 @@ package org.project.soar.model.tag;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.io.Serializable;
 import org.project.soar.model.field.Field;
-import jakarta.persistence.Embeddable;
 
 @Entity
-@Table(name = "Tag")
-@Data
+@Table(name = "tag")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Tag {
-    @EmbeddedId
-    private TagId id;
 
-    @ManyToOne
-    @MapsId("fieldId")
-    @JoinColumn(name = "field_id")
-    private Field field;
-}
-
-@Embeddable
-@Data
-class TagId implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "tag_id")
-    private String tagId;
+    private Long tagId;
 
-    @Column(name = "field_id")
-    private String fieldId;
+    @Column(name = "tag_name", length = 100, nullable = false)
+    private String tagName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "field_id", nullable = false)
+    private Field field;
 }
