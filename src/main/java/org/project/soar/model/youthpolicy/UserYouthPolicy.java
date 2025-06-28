@@ -7,11 +7,16 @@ import java.time.LocalDateTime;
 import org.project.soar.model.user.User;
 
 @Entity
-@Table(name = "UserYouthPolicy")
-@Data
+@Table(name = "user_youth_policy")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserYouthPolicy {
-    @EmbeddedId
-    private UserYouthPolicyId id;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "applied_yn")
     private Boolean appliedYn;
@@ -22,13 +27,11 @@ public class UserYouthPolicy {
     @Column(name = "delete_yn")
     private Boolean deleteYn;
 
-    @ManyToOne
-    @MapsId("projectId")
-    @JoinColumn(name = "project_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "policy_id", referencedColumnName = "policy_id")
     private YouthPolicy youthPolicy;
 
-    @ManyToOne
-    @MapsId("userId")
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 }
