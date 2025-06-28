@@ -2,7 +2,6 @@ package org.project.soar.model.youthpolicy;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.project.soar.global.abstracts.BaseTimeEntity;
 import java.time.LocalDateTime;
 
 @Entity
@@ -12,103 +11,131 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class YouthPolicy extends BaseTimeEntity {
+public class YouthPolicy {
 
     @Id
-    @Column(name = "policy_id")
+    @Column(name = "policy_id", length = 50)
     private String policyId;
 
-    @Column(name = "title", length = 2000)
-    private String title;
+    @Column(name = "policy_name", length = 500)
+    private String policyName;
 
-    @Column(name = "project_name", length = 2000)
-    private String projectName;
+    @Column(name = "policy_keyword", length = 200)
+    private String policyKeyword;
 
-    @Column(name = "banner_img", length = 3000)
-    private String bannerImg;
+    @Column(name = "policy_explanation", columnDefinition = "TEXT")
+    private String policyExplanation;
 
-    @Column(name = "target_summary", length = 3000)
-    private String targetSummary;
+    @Column(name = "policy_support_content", columnDefinition = "TEXT")
+    private String policySupportContent;
 
-    @Column(name = "contact", length = 2000)
-    private String contact;
+    @Column(name = "large_classification", length = 200)
+    private String largeClassification;
 
-    @Column(name = "application_start_date")
-    private LocalDateTime applicationStartDate;
+    @Column(name = "medium_classification", length = 200)
+    private String mediumClassification;
 
-    @Column(name = "application_end_date")
-    private LocalDateTime applicationEndDate;
+    @Column(name = "supervising_inst_code", length = 20)
+    private String supervisingInstCode;
 
-    @Column(name = "support_date")
-    private LocalDateTime supportDate;
+    @Column(name = "supervising_inst_name", length = 300)
+    private String supervisingInstName;
 
-    @Column(name = "selection_date")
-    private LocalDateTime selectionDate;
+    @Column(name = "operating_inst_code", length = 20)
+    private String operatingInstCode;
 
-    @Column(name = "objection_date")
-    private LocalDateTime objectionDate;
+    @Column(name = "operating_inst_name", length = 300)
+    private String operatingInstName;
 
-    @Column(name = "final_result_date")
-    private LocalDateTime finalResultDate;
+    @Column(name = "business_period_start", length = 8)
+    private String businessPeriodStart;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "business_period_end", length = 8)
+    private String businessPeriodEnd;
 
-    @Column(name = "keywords", length = 2000)
-    private String keywords;
-
-    @Column(name = "support_content", columnDefinition = "TEXT")
-    private String supportContent;
-
-    @Column(name = "apply_url", length = 3000)
-    private String applyUrl;
-
-    @Column(name = "apply_period", length = 2000)
-    private String applyPeriod;
-
-    // API에서 추가로 받아올 수 있는 필드들 (실제 API 응답 기반)
-    @Column(name = "supervising_institution", length = 2000)
-    private String supervisingInstitution; // sprvsnInstCdNm
-
-    @Column(name = "operating_institution", length = 2000)
-    private String operatingInstitution; // operInstCdNm
-
-    @Column(name = "min_age")
-    private Integer minAge; // sprtTrgtMinAge
-
-    @Column(name = "max_age")
-    private Integer maxAge; // sprtTrgtMaxAge
-
-    @Column(name = "support_scale", length = 2000)
-    private String supportScale; // sprtSclCnt
-
-    @Column(name = "large_classification", length = 1000)
-    private String largeClassification; // lclsfNm
-
-    @Column(name = "medium_classification", length = 1000)
-    private String mediumClassification; // mclsfNm
-
-    @Column(name = "business_period_etc", length = 2000)
-    private String businessPeriodEtc; // bizPrdEtcCn
-
-    @Column(name = "inquiry_count")
-    private Integer inquiryCount; // inqCnt
-
-    @Column(name = "reference_url1", length = 3000)
-    private String referenceUrl1; // refUrlAddr1
-
-    @Column(name = "reference_url2", length = 3000)
-    private String referenceUrl2; // refUrlAddr2
+    @Column(name = "business_period_etc", length = 500)
+    private String businessPeriodEtc;
 
     @Column(name = "apply_method_content", columnDefinition = "TEXT")
-    private String applyMethodContent; // plcyAplyMthdCn
+    private String applyMethodContent;
 
     @Column(name = "screening_method_content", columnDefinition = "TEXT")
-    private String screeningMethodContent; // srngMthdCn
+    private String screeningMethodContent;
+
+    @Column(name = "apply_url", length = 1000)
+    private String applyUrl;
 
     @Column(name = "submit_document_content", columnDefinition = "TEXT")
-    private String submitDocumentContent; // sbmsnDcmntCn
+    private String submitDocumentContent;
 
     @Column(name = "etc_matter_content", columnDefinition = "TEXT")
-    private String etcMatterContent; // etcMttrCn
+    private String etcMatterContent;
+
+    @Column(name = "reference_url1", length = 1000)
+    private String referenceUrl1;
+
+    @Column(name = "reference_url2", length = 1000)
+    private String referenceUrl2;
+
+    @Column(name = "support_scale_count", length = 20)
+    private String supportScaleCount;
+
+    @Column(name = "support_target_min_age")
+    private Integer supportTargetMinAge;
+
+    @Column(name = "support_target_max_age")
+    private Integer supportTargetMaxAge;
+
+    @Column(name = "support_target_age_limit_yn", length = 1)
+    private String supportTargetAgeLimitYn;
+
+    @Column(name = "earn_min_amt")
+    private Long earnMinAmt;
+
+    @Column(name = "earn_max_amt")
+    private Long earnMaxAmt;
+
+    @Column(name = "earn_etc_content", length = 500)
+    private String earnEtcContent;
+
+    @Column(name = "additional_apply_qualification", columnDefinition = "TEXT")
+    private String additionalApplyQualification;
+
+    @Column(name = "inquiry_count")
+    private Integer inquiryCount;
+
+    @Column(name = "zip_code", columnDefinition = "TEXT")
+    private String zipCode;
+
+    @Column(name = "policy_major_code", length = 100)
+    private String policyMajorCode;
+
+    @Column(name = "job_code", length = 100)
+    private String jobCode;
+
+    @Column(name = "school_code", length = 100)
+    private String schoolCode;
+
+    @Column(name = "first_reg_dt")
+    private LocalDateTime firstRegDt;
+
+    @Column(name = "last_modify_dt")
+    private LocalDateTime lastModifyDt;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

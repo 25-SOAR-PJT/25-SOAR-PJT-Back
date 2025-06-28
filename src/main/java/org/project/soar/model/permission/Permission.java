@@ -1,36 +1,28 @@
 package org.project.soar.model.permission;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 import org.project.soar.model.user.User;
-import java.io.Serializable;
+import org.project.soar.global.abstracts.BaseTimeEntity;
 
 @Entity
-@Table(name = "Permission")
-@Data
-public class Permission {
-    @EmbeddedId
-    private PermissionId id;
+@Table(name = "permission")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Permission extends BaseTimeEntity {
 
-    @ManyToOne
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private User user;
-}
-
-@Embeddable
-@Data
-class PermissionId implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "permission_id")
-    private String permissionId;
+    private Long permissionId;
 
-    @Column(name = "user_id")
-    private String userId;
+    @Column(name = "permission_key", length = 50, nullable = false)
+    private String permissionKey;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

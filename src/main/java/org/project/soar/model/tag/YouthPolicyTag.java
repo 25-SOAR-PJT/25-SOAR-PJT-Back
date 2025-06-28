@@ -1,25 +1,9 @@
 package org.project.soar.model.tag;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.persistence.*;
+import lombok.*;
 import org.project.soar.model.youthpolicy.YouthPolicy;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import java.io.Serializable;
+import org.project.soar.model.field.Field;
 
 @Entity
 @Table(name = "youth_policy_tag")
@@ -27,25 +11,23 @@ import java.io.Serializable;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class YouthPolicyTag {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "policy_id", nullable = false)
+    @JoinColumn(name = "policy_id", referencedColumnName = "policy_id", nullable = false)
     private YouthPolicy youthPolicy;
-}
 
-@Embeddable
-@Data
-class YouthPolicyTagId implements Serializable {
-    private Integer projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id", nullable = false)
+    private Tag tag;
 
-    @Column(name = "tag_id")
-    private Integer tagId;
-
-    @Column(name = "field_id")
-    private Integer fieldId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "field_id", nullable = false)
+    private Field field;
 }
