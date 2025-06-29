@@ -6,14 +6,12 @@ import lombok.*;
 @ToString
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 
-public class ChatRequestMsgDto {
-
+public class Message {
     private String role;
-
     private String content;
 
     @Builder
-    public ChatRequestMsgDto(String role, String content) {
+    public Message(String role, String content) {
         this.role = role;
         this.content = content;
     }
