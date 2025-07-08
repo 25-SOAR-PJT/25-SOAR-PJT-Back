@@ -1,9 +1,14 @@
 package org.project.soar.model.user;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.project.soar.global.abstracts.BaseTimeEntity;
+import org.project.soar.model.auth.Permission;
+
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "user")
@@ -29,11 +34,24 @@ public class User extends BaseTimeEntity {
     private String userPhoneNumber;
 
     @Column(name = "user_gender", length = 10)
-    private String userGender;
+    private boolean userGender;
 
     @Column(name = "user_email", length = 100, unique = true)
     private String userEmail;
 
     @Column(name = "user_password", length = 255)
     private String userPassword;
+
+//    @Builder.Default
+//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @JsonManagedReference
+//    private List<Auth> auths = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Permission> permissions = new ArrayList<>();
+
+//    @Builder.Default
+//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<SystemLog> systemLogs = new ArrayList<>();
 }
