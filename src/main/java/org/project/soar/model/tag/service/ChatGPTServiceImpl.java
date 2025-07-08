@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.RestTemplateConfig;
-import org.project.soar.model.tag.dto.ChatCompletionDto;
+import org.project.soar.model.tag.dto.ChatCompletion;
+import org.project.soar.model.tag.dto.PromptRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,12 +102,12 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     }
 
     @Override
-    public Map<String, Object> prompt(ChatCompletionDto chatCompletionDto) {
+    public Map<String, Object> prompt(ChatCompletion chatCompletion) {
         log.debug("신규 프롬프트 수행");
         Map<String, Object> resultMap = new HashMap<>();
 
         HttpHeaders headers = restTemplateConfig.gptHeaders();
-        HttpEntity<ChatCompletionDto> requestEntity = new HttpEntity<>(chatCompletionDto, headers);
+        HttpEntity<ChatCompletion> requestEntity = new HttpEntity<>(chatCompletion, headers);
         ResponseEntity<String> response = restTemplateConfig
                 .restTemplate()
                 .exchange(promptUrl, HttpMethod.POST, requestEntity, String.class);
@@ -121,4 +123,28 @@ public class ChatGPTServiceImpl implements ChatGPTService{
         return resultMap;
     }
 
+    @Override
+    public Map<String, Object> runPrompt() {
+        PromptRequest requestDto = PromptRequest.builder()
+                .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "3"))
+                .input(Collections.emptyList()) // 여기에 넣어야함
+                .reasoning(Collections.emptyMap())
+                .max_output_tokens(2048)
+                .store(true)
+                .build();
+
+        HttpHeaders headers = restTemplateConfig.gptHeaders();
+        HttpEntity<PromptRequest> entity = new HttpEntity<>(requestDto, headers);
+
+        ResponseEntity<String> response = restTemplateConfig
+                .restTemplate()
+                .exchange(promptEndpoint, HttpMethod.POST, entity, String.class);
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(response.getBody(), new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
