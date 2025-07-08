@@ -49,8 +49,10 @@ dependencies {
 
     // 이메일  기능
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     //redis 추가
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // json 파싱
     implementation 'com.google.code.gson:gson:2.12.1'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
