@@ -1,4 +1,4 @@
-package org.project.soar.controller;
+package org.project.soar.model.youthpolicy.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
