@@ -54,6 +54,5 @@ public class ChatGPTController {
         Map<String, Object> result = chatGPTService.runPrompt();
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
-
 }
 
