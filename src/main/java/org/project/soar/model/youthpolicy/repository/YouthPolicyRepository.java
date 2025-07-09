@@ -18,6 +18,14 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
      */
     List<YouthPolicy> findByPolicyNameContaining(String keyword);
 
+    @Query("SELECT y FROM YouthPolicy y WHERE " +
+                  "LOWER(y.policyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                  "LOWER(y.policyExplanation) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                  "LOWER(y.applyMethodContent) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                  "LOWER(y.submitDocumentContent) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                  "LOWER(y.additionalApplyQualification) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    List<YouthPolicy> searchByKeyword(@Param("keyword") String keyword);
+
     /**
      * 대분류로 검색 (카테고리 검색용)
      */
@@ -37,10 +45,6 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
      * 정책 ID 존재 여부 확인
      */
     boolean existsByPolicyId(String policyId);
-
-    // ========================================
-    // 추가 유용한 메서드들 (선택적 사용)
-    // ========================================
 
     /**
      * 정책 키워드로 검색
