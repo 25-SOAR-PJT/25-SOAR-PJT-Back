@@ -1,6 +1,6 @@
-package org.project.soar.model.auth.repository;
+package org.project.soar.model.permission.repository;
 
-import org.project.soar.model.auth.Permission;
+import org.project.soar.model.permission.Permission;
 import org.project.soar.model.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
