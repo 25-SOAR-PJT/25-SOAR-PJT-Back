@@ -29,7 +29,10 @@ public class SecurityConfig {
 
     private final String[] allowedUrls = {"/","/api/auth/find-id", "/api/auth/find-password", "/api/auth/reset-password",
             "/api/auth/signin", "/api/auth/signup", "/api/auth/kakao/signin","/api/auth/google/**","/api/auth/refresh",
-            "/api/v1/**", "/api/auth/signup/otp", "/api/auth/signup/otp/check", "/api/v1/**"
+            "/api/v1/**", "/api/auth/signup/otp", "/api/auth/signup/otp/check", "/api/v1/**", "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/v3/api-docs.yaml"
     };
 
     @Bean
