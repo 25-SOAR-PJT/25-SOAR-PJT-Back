@@ -1,4 +1,4 @@
-package org.project.soar.model.auth.dto;
+package org.project.soar.model.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;

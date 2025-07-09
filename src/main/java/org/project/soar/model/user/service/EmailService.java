@@ -1,4 +1,4 @@
-package org.project.soar.model.auth.service;
+package org.project.soar.model.user.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
