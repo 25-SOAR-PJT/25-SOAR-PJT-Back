@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.project.soar.global.scheduler.YouthPolicyScheduler;
 import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicy.YouthPolicyStep;
+import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
 import org.project.soar.model.youthpolicy.service.YouthPolicyService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,15 +22,13 @@ import java.util.Map;
 @RequestMapping("/api/youth-policy")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // 개발용 - 프로덕션에서는 특정 도메인으로 제한
+@CrossOrigin(origins = "*")
 public class YouthPolicyController {
 
     private final YouthPolicyService youthPolicyService;
     private final YouthPolicyScheduler youthPolicyScheduler;
+    private final YouthPolicyStepRepository youthPolicyStepRepository;
 
-    /**
-     * 수동 데이터 동기화 (Postman 테스트용)
-     */
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncYouthPolicies() {
         try {
@@ -48,6 +48,12 @@ public class YouthPolicyController {
                     "timestamp", System.currentTimeMillis()));
         }
     }
+    
+    @GetMapping("/step/{policyId}")
+    public ResponseEntity<YouthPolicyStep> getStepByPolicyId(@PathVariable String policyId) {
+        return ResponseEntity.of(youthPolicyStepRepository.findByPolicyId(policyId));
+    }
+
 
     /**
      * 전체 청년정책 목록 조회
@@ -80,6 +86,15 @@ public class YouthPolicyController {
                     "message", "데이터 조회에 실패했습니다: " + e.getMessage(),
                     "timestamp", System.currentTimeMillis()));
         }
+    }
+
+    /**
+     * 키워드로 청년정책 검색
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<YouthPolicy>> searchByKeyword(@RequestParam("keyword") String keyword) {
+        List<YouthPolicy> result = youthPolicyService.searchPolicies(keyword);
+        return ResponseEntity.ok(result);
     }
 
     /**

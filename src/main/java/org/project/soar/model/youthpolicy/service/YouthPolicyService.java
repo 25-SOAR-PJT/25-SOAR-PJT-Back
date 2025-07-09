@@ -5,8 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.project.soar.config.YouthPolicyApiConfig;
 import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicy.YouthPolicyStep;
 import org.project.soar.model.youthpolicy.dto.*;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
+import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
+import org.project.soar.util.StepExtractor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,7 +19,6 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -30,10 +32,9 @@ public class YouthPolicyService {
     private final YouthPolicyRepository youthPolicyRepository;
     private final YouthPolicyApiConfig youthPolicyApiConfig;
     private final RestTemplate restTemplate;
+    private YouthPolicyStepRepository stepRepository;
 
-    /**
-     * 전체 청년정책 데이터 동기화 (Controller와 Scheduler에서 사용)
-     */
+
     @Transactional
     public int syncAllYouthPolicies() {
         try {
@@ -56,14 +57,13 @@ public class YouthPolicyService {
                         List<YouthPolicyApiData> youthPolicyApiDataList = apiResponse.getResult().getYouthPolicyList();
 
                         if (youthPolicyApiDataList != null && !youthPolicyApiDataList.isEmpty()) {
-                            List<YouthPolicy> youthPolicyList = convertToYouthPolicyEntityList(youthPolicyApiDataList);
-                            int savedCount = saveYouthPolicyList(youthPolicyList);
+                            // ✅ 핵심 변경: step 저장 포함 메서드 호출
+                            int savedCount = saveYouthPolicyFromApi(youthPolicyApiDataList);
                             totalSavedCount += savedCount;
 
                             log.info("Processed {} policies from page {}, saved: {}",
                                     youthPolicyApiDataList.size(), pageNum, savedCount);
 
-                            // 다음 페이지 존재 여부 확인
                             YouthPolicyApiPaging apiPaging = apiResponse.getResult().getPagging();
                             hasMoreData = checkHasMoreData(pageNum, pageSize, apiPaging.getTotCount());
                             pageNum++;
@@ -71,7 +71,7 @@ public class YouthPolicyService {
                             log.info("No more data found on page {}", pageNum);
                             hasMoreData = false;
                         }
-                    } else {
+                    }else {
                         log.error("Invalid API response on page {}: {}", pageNum,
                                 apiResponse != null ? apiResponse.getResultMessage() : "No response");
                         hasMoreData = false;
@@ -146,13 +146,18 @@ public class YouthPolicyService {
     /**
      * 키워드로 청년정책 검색 (Controller에서 사용)
      */
+    public List<YouthPolicy> searchPolicies(String keyword) {
+        return youthPolicyRepository.searchByKeyword(keyword);
+    }
+
+    /**
+     * 키워드로 청년정책 검색 (Controller에서 사용) - 이름
+     */
     public List<YouthPolicy> searchByKeyword(String keyword) {
         try {
             if (!StringUtils.hasText(keyword)) {
                 return getAllYouthPolicies();
             }
-
-            // Repository 메서드를 간단한 방식으로 수정
             return youthPolicyRepository.findByPolicyNameContaining(keyword);
         } catch (Exception e) {
             log.error("Error searching youth policies by keyword: {}", keyword, e);
@@ -420,6 +425,25 @@ public class YouthPolicyService {
             return null;
         }
     }
+    /**
+     * 데이터 전처리
+     * 
+     */
+
+    private void preprocessAndSaveSteps(YouthPolicyApiData data) {
+        YouthPolicyStep step = StepExtractor.extractSteps(
+                data.getPlcyNo(),
+                data.getPlcyAplyMthdCn(),
+                data.getSbmsnDcmntCn(),
+                data.getSrngMthdCn()
+                );
+        System.out.println("Extracted Steps: " + step);
+        if (step != null) {
+            stepRepository.save(step);
+            System.out.println("Saved Steps: " + step);
+        }
+    }      
+
 
     /**
      * 청년정책 데이터 저장 (중복 처리)
@@ -438,7 +462,7 @@ public class YouthPolicyService {
                 } else {
                     youthPolicyRepository.save(youthPolicyEntity);
                     savedCount++;
-                }
+                    log.info("Saved new youth policy: {}", youthPolicyEntity.getPolicyId());                }
             } catch (Exception exception) {
                 log.error("Failed to save youth policy: {} - {}",
                         youthPolicyEntity.getPolicyId(), exception.getMessage());
@@ -447,6 +471,36 @@ public class YouthPolicyService {
 
         return savedCount;
     }
+
+    public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
+        List<YouthPolicy> entityList = apiDataList.stream()
+                .map(this::convertToYouthPolicyEntity) // 기존 변환기
+                .collect(Collectors.toList());
+
+        int savedCount = 0;
+        for (int i = 0; i < entityList.size(); i++) {
+            YouthPolicy entity = entityList.get(i);
+            YouthPolicyApiData rawData = apiDataList.get(i);
+
+            try {
+                Optional<YouthPolicy> existing = youthPolicyRepository.findById(entity.getPolicyId());
+                if (existing.isPresent()) {
+                    updateExistingYouthPolicy(existing.get(), entity);
+                    youthPolicyRepository.save(existing.get());
+                } else {
+                    youthPolicyRepository.save(entity);
+                    savedCount++;
+                }
+
+                preprocessAndSaveSteps(rawData); // 💡 전처리 메서드 여기서 호출
+
+            } catch (Exception e) {
+                log.error("정책 저장 중 오류 발생: {}", e.getMessage());
+            }
+        }
+
+        return savedCount;
+    }    
 
     /**
      * 기존 청년정책 데이터 업데이트 - 간단하게 수정
