@@ -1,11 +1,7 @@
 package org.project.soar.model.user;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,28 +9,28 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "KakaoUser")
 @Data
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class KakaoUser {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "kakao_user_id")
-    private String kakaoUserId;
+    private Long kakaoUserId;
 
-    @Column(name = "kakao_id")
+    @Column(name = "kakao_id", nullable = false, unique = true)
     private String kakaoId;
 
     @Column(name = "kakao_nickname")
     private String kakaoNickname;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "access_token")
     private String accessToken;
 
     @Builder
-    public KakaoUser(String kakaoUserId, String kakaoId, String kakaoNickname, User user, String accessToken) {
-        this.kakaoUserId = kakaoUserId;
+    public KakaoUser(String kakaoId, String kakaoNickname, User user, String accessToken) {
         this.kakaoId = kakaoId;
         this.kakaoNickname = kakaoNickname;
         this.user = user;

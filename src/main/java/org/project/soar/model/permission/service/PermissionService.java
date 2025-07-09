@@ -1,7 +1,7 @@
-package org.project.soar.model.auth.service;
+package org.project.soar.model.permission.service;
 
-import org.project.soar.model.auth.Permission;
-import org.project.soar.model.auth.repository.PermissionRepository;
+import org.project.soar.model.permission.Permission;
+import org.project.soar.model.permission.repository.PermissionRepository;
 import org.project.soar.model.user.User;
 import org.springframework.stereotype.Service;
 

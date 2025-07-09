@@ -1,9 +1,9 @@
-package org.project.soar.model.auth.controller;
+package org.project.soar.model.user.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.project.soar.model.auth.dto.EmailRequestDto;
-import org.project.soar.model.auth.service.EmailService;
+import org.project.soar.model.user.dto.EmailRequestDto;
+import org.project.soar.model.user.service.EmailService;
 import org.project.soar.model.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,10 +1,9 @@
 package org.project.soar.model.user;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.project.soar.global.abstracts.BaseTimeEntity;
-import org.project.soar.model.auth.Permission;
+import org.project.soar.model.permission.Permission;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

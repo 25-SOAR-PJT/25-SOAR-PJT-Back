@@ -5,8 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
-import org.project.soar.model.auth.service.EmailService;
-import org.project.soar.model.auth.service.PermissionService;
+import org.project.soar.model.permission.service.PermissionService;
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
@@ -173,8 +172,82 @@ public class UserService {
         return "로그아웃 성공";
     }
 
+    @Transactional
+    public String deleteUser(String token, String password) {
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getUserPassword())) {
+            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }
+
+        refreshTokenRepository.deleteById(user.getUserId());
+
+        kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
+//        permissionRepository.deleteAllByUser(user);
+//
+//        List<Lists> userLists = listsRepository.findAllByUser(user);
+//        for (Lists list : userLists) {
+//            productRepository.deleteAllByLists(list); // 연결된 상품 먼저 제거
+//            listsRepository.delete(list);
+//        }
+
+        userRepository.delete(user);
+
+        return "회원 탈퇴 성공";
+    }
+
     private boolean isValidPassword(String password) {
         String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*]).{8,16}$";
         return Pattern.matches(passwordPattern, password);
+    }
+
+    // 카카오 로그인
+    @Transactional
+    public KakaoLoginResponse kakaoSignIn(String accessToken) {
+        if (accessToken == null || accessToken.isEmpty()) {
+            throw new RuntimeException("카카오 액세스 토큰이 유효하지 않습니다.");
+        }
+
+        log.info("Received Kakao access token: {}", accessToken);
+
+        String kakaoId = kakaoService.extractKakaoId(accessToken);
+        boolean isFirstKakao = kakaoUserRepository.findByKakaoId(kakaoId).isEmpty();
+        KakaoUser kakaoUser = kakaoService.saveOrUpdateKakaoUser(accessToken);
+
+        if (kakaoUser == null) {
+            throw new RuntimeException("카카오 사용자 정보가 없습니다.");
+        }
+
+        User user = kakaoUser.getUser();
+        userRepository.save(user);
+
+        if (user == null) {
+            throw new RuntimeException("해당 카카오 사용자에 대한 유저 정보가 없습니다.");
+        }
+
+        log.info("User associated with Kakao user: {}", user);
+
+        String jwtAccessToken = tokenProvider.createToken(user);
+        String jwtRefreshToken = tokenProvider.createRefreshToken(user);
+
+        refreshTokenRepository.save(
+                new RefreshToken(user.getUserId(), jwtRefreshToken, user));
+
+        return KakaoLoginResponse.builder()
+                .userId(user.getUserId())
+                .userName(user.getUserName())
+                .userEmail(user.getUserEmail())
+                .msg("카카오 로그인 성공")
+                .accessToken(jwtAccessToken)
+                .refreshToken(jwtRefreshToken)
+                .firstSocialLogin(isFirstKakao)
+                .socialProvider("kakao")
+                .build();
     }
 }
