@@ -72,4 +72,24 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(response));
     }
+
+    //카카오 로그인
+    @PostMapping("/kakao/signin")
+    public ResponseEntity<ApiResponse<KakaoLoginResponse>> kakaoSignIn(@RequestBody KakaoLoginRequest request) {
+        log.info("Raw Request Body: " + request);
+        log.info("Kakao SignIn endpoint hit with token: " + request.getAccessToken());
+
+        if (request.getAccessToken() == null || request.getAccessToken().isEmpty()) {
+            log.error("카카오 로그인 실패: 토큰이 없습니다.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<KakaoLoginResponse>) ApiResponse.createError("카카오 액세스 토큰이 없습니다."));
+        }
+
+        KakaoLoginResponse response = userService.kakaoSignIn(request.getAccessToken());
+
+        if ("카카오 로그인 성공".equals(response.getMsg())) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(response, "카카오 로그인 성공"));
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<KakaoLoginResponse>) ApiResponse.createError(response.getMsg()));
+    }
 }
