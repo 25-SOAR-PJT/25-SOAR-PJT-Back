@@ -12,5 +12,5 @@ public interface ChatGPTService {
     Map<String, Object> isValidModel(String modelName);
     Map<String, Object> prompt(ChatCompletion chatCompletion);
 
-    Map<String, Object> runPrompt();
+    List<Map<String, Object>> runPrompt();
 }

@@ -50,8 +50,8 @@ public class ChatGPTController {
     chatGPT Prompt Management(프롬프트 튜닝 태깅)
      **/
     @PostMapping("/promptManagement")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> runPrompt() {
-        Map<String, Object> result = chatGPTService.runPrompt();
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> runPrompt() {
+        List<Map<String, Object>> result = chatGPTService.runPrompt();
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
 }

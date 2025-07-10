@@ -24,4 +24,9 @@ public class Tag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "field_id", nullable = false)
     private Field field;
+
+    public Tag(String tag, Field field) {
+        this.tagName = tag;
+        this.field = field;
+    }
 }
