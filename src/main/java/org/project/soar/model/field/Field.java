@@ -19,4 +19,8 @@ public class Field {
 
     @Column(name = "field_name", length = 100, nullable = false)
     private String fieldName;
+
+    public Field(String name) {
+        this.fieldName = name;
+    }
 }
