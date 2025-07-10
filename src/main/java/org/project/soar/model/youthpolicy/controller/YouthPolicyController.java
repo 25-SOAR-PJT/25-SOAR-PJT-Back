@@ -51,7 +51,9 @@ public class YouthPolicyController {
     
     @GetMapping("/step/{policyId}")
     public ResponseEntity<YouthPolicyStep> getStepByPolicyId(@PathVariable String policyId) {
-        return ResponseEntity.of(youthPolicyStepRepository.findByPolicyId(policyId));
+        return youthPolicyStepRepository.findByPolicyId(policyId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
 

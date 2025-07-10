@@ -32,7 +32,7 @@ public class YouthPolicyService {
     private final YouthPolicyRepository youthPolicyRepository;
     private final YouthPolicyApiConfig youthPolicyApiConfig;
     private final RestTemplate restTemplate;
-    private YouthPolicyStepRepository stepRepository;
+    private final YouthPolicyStepRepository stepRepository;
 
 
     @Transactional
@@ -57,7 +57,7 @@ public class YouthPolicyService {
                         List<YouthPolicyApiData> youthPolicyApiDataList = apiResponse.getResult().getYouthPolicyList();
 
                         if (youthPolicyApiDataList != null && !youthPolicyApiDataList.isEmpty()) {
-                            // ✅ 핵심 변경: step 저장 포함 메서드 호출
+
                             int savedCount = saveYouthPolicyFromApi(youthPolicyApiDataList);
                             totalSavedCount += savedCount;
 
@@ -431,18 +431,28 @@ public class YouthPolicyService {
      */
 
     private void preprocessAndSaveSteps(YouthPolicyApiData data) {
-        YouthPolicyStep step = StepExtractor.extractSteps(
+        YouthPolicyStep newStep = StepExtractor.extractSteps(
                 data.getPlcyNo(),
                 data.getPlcyAplyMthdCn(),
                 data.getSbmsnDcmntCn(),
-                data.getSrngMthdCn()
-                );
-        System.out.println("Extracted Steps: " + step);
-        if (step != null) {
-            stepRepository.save(step);
-            System.out.println("Saved Steps: " + step);
-        }
-    }      
+                data.getSrngMthdCn());
+
+        Optional<YouthPolicyStep> existingOpt = stepRepository.findByPolicyId(newStep.getPolicyId());
+
+        YouthPolicyStep stepToSave = existingOpt
+                .map(existing -> YouthPolicyStep.builder()
+                        .policyId(existing.getPolicyId())
+                        .submittedDocuments(newStep.getSubmittedDocuments())
+                        .step1(newStep.getStep1())
+                        .step2(newStep.getStep2())
+                        .step3(newStep.getStep3())
+                        .step4(newStep.getStep4())
+                        .caution(newStep.getCaution())
+                        .build())
+                .orElse(newStep); // 신규인 경우 그대로 저장
+
+        stepRepository.save(stepToSave);
+    }    
 
 
     /**
