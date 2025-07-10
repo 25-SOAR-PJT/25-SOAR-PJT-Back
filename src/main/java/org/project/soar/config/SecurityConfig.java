@@ -32,7 +32,8 @@ public class SecurityConfig {
             "/api/v1/**", "/api/auth/signup/otp", "/api/auth/signup/otp/check", "/api/v1/**", "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
-            "/v3/api-docs.yaml"
+            "/v3/api-docs.yaml",
+            "/api/field/", "api/tag/","/api/youth-policy","/api/youth-policy/sync","api/chatgpt/promptManagement"
     };
 
     @Bean
