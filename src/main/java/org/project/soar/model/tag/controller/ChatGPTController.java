@@ -52,8 +52,11 @@ public class ChatGPTController {
     chatGPT Prompt Management(프롬프트 튜닝 태깅)
      **/
     @PostMapping("/promptManagement")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> runPrompt() {
-        List<Map<String, Object>> result = chatGPTService.runPrompt();
+    public ResponseEntity<ApiResponse<List<YouthPolicyTag>>> runPrompt() {
+        List<YouthPolicyTag> result = chatGPTService.runPrompt();
+        if (result.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<List<YouthPolicyTag>>) ApiResponse.createError("empty"));
+        }
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
 }
