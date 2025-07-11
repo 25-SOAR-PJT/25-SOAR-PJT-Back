@@ -30,4 +30,11 @@ public class YouthPolicyTag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "field_id", nullable = false)
     private Field field;
+
+    @Builder
+    public YouthPolicyTag(YouthPolicy youthPolicy, Tag tag, Field field) {
+        this.youthPolicy = youthPolicy;
+        this.tag = tag;
+        this.field = field;
+    }
 }
