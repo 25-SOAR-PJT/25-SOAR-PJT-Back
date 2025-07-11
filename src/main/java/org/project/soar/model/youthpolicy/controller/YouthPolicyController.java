@@ -51,9 +51,12 @@ public class YouthPolicyController {
     
     @GetMapping("/step/{policyId}")
     public ResponseEntity<YouthPolicyStep> getStepByPolicyId(@PathVariable String policyId) {
-        return ResponseEntity.of(youthPolicyStepRepository.findByPolicyId(policyId));
+        List<YouthPolicyStep> steps = youthPolicyStepRepository.findAllByPolicyId(policyId);
+        if (steps.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(steps.get(steps.size() - 1)); // ✔️ 가장 마지막 항목 반환
     }
-
 
     /**
      * 전체 청년정책 목록 조회

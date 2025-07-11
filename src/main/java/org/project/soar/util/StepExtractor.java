@@ -1,54 +1,60 @@
 package org.project.soar.util;
 
-import org.project.soar.model.youthpolicy.YouthPolicyStep;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class StepExtractor {
 
-    public static YouthPolicyStep extractSteps(String policyId, String applyMethodContent,
-            String submissionDocumentContent, String screeningMethodContent) {
+    private static final Pattern SPLIT_PATTERN = Pattern.compile("[\\-▶→●·\\*\\n]");
+    private static final Map<String, Pattern> STEP_PATTERNS = Map.of(
+        "apply", Pattern.compile("(신청|접수|지원|원서|모집)", Pattern.CASE_INSENSITIVE),
+        "document", Pattern.compile("(서류|제출|자격|검토|자산심사|기록부|증빙|확인서)", Pattern.CASE_INSENSITIVE),
+        "notice", Pattern.compile("(발표|통보|결과|안내|문자|홈페이지|게시|합격|이의|선정|면접)", Pattern.CASE_INSENSITIVE),
+        "caution", Pattern.compile("(일정|날짜|참고|포기|계좌|교육|조건|공고문|주의|계획|기타|준수|보험)", Pattern.CASE_INSENSITIVE)
+    );
 
-        String fullContent = (applyMethodContent == null ? "" : applyMethodContent) +
-                (screeningMethodContent == null ? "" : screeningMethodContent);
+    public static Map<String, List<String>> extractSteps(String... contents) {
+        List<String> allSentences = Arrays.stream(contents)
+            .filter(Objects::nonNull)
+            .flatMap(content -> SPLIT_PATTERN.splitAsStream(content))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toList());
 
-        String submittedDocuments = extractSubmittedDocuments(submissionDocumentContent);
-        String step1 = containsAny(fullContent, "신청", "접수", "제출") ? "신청 접수" : null;
-        String step2 = containsAny(fullContent, "서류", "필수서류", "제출서류", "PDF") ? "서류 검토" : null;
-        String step3 = containsAny(fullContent, "심사", "선정방법", "우선순위") ? "심사 절차" : null;
-        String step4 = containsAny(fullContent, "통보", "결과", "발표", "이메일", "문자") ? "발표 및 통보" : null;
+        List<String> applySteps = new ArrayList<>();
+        List<String> documentSteps = new ArrayList<>();
+        List<String> noticeSteps = new ArrayList<>();
+        List<String> cautionSteps = new ArrayList<>();
 
-        // 전처리 로그 확인
-        System.out.println("step1: " + step1);
-        System.out.println("step2: " + step2);
-        System.out.println("step3: " + step3);
-        System.out.println("step4: " + step4);
-        System.out.println("submittedDocuments: " + submittedDocuments);
-
-        // 모두 null이면 저장하지 않음
-        if (submittedDocuments == null && step1 == null && step2 == null && step3 == null && step4 == null) {
-            return null;
+        for (String sentence : allSentences) {
+            if (STEP_PATTERNS.get("apply").matcher(sentence).find()) {
+                applySteps.add(sentence);
+            } else if (STEP_PATTERNS.get("document").matcher(sentence).find()) {
+                documentSteps.add(sentence);
+            } else if (STEP_PATTERNS.get("notice").matcher(sentence).find()) {
+                noticeSteps.add(sentence);
+            } else if (STEP_PATTERNS.get("caution").matcher(sentence).find()) {
+                cautionSteps.add(sentence);
+            } else {
+                cautionSteps.add(sentence); // 미분류 문장도 caution으로
+            }
         }
 
-        return YouthPolicyStep.builder()
-                .policyId(policyId)
-                .submittedDocuments(submittedDocuments)
-                .step1(step1)
-                .step2(step2)
-                .step3(step3)
-                .step4(step4)
-                .build();
+        return Map.of(
+            "apply", defaultIfEmpty(applySteps),
+            "document", defaultIfEmpty(documentSteps),
+            "notice", defaultIfEmpty(noticeSteps),
+            "caution", defaultIfEmpty(cautionSteps)
+        );
     }
 
-    private static boolean containsAny(String content, String... keywords) {
-        if (content == null)
-            return false;
-        for (String keyword : keywords) {
-            if (content.contains(keyword))
-                return true;
-        }
-        return false;
+    private static List<String> defaultIfEmpty(List<String> list) {
+        return list == null || list.isEmpty() ? List.of("없음") : list;
     }
 
-    private static String extractSubmittedDocuments(String content) {
-        return (content != null && !content.isBlank()) ? content.trim() : null;
+    public static String joinHtmlList(List<String> steps) {
+        if (steps == null || steps.isEmpty()) return "없음";
+        return String.join("<br>", steps);
     }
 }
