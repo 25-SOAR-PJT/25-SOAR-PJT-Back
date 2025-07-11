@@ -10,7 +10,7 @@ import java.util.Map;
 @Builder
 public class PromptRequest {
     private Prompt prompt;
-    private List<Object> input;
+    private List<Map<String, String>> input;
     private Map<String, Object> reasoning;
     private Integer max_output_tokens;
     private Boolean store;

@@ -223,5 +223,7 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
      */
     @Query("SELECT yp FROM YouthPolicy yp WHERE YEAR(yp.createdAt) = :year AND MONTH(yp.createdAt) = :month")
     List<YouthPolicy> findByCreatedAtYearAndMonth(@Param("year") int year, @Param("month") int month);
+
+    List<YouthPolicy> findTop2ByOrderByCreatedAtDesc();
 }
 

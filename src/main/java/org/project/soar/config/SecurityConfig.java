@@ -33,6 +33,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/v3/api-docs.yaml",
+            "/api/field/", "api/tag/","/api/youth-policy","/api/youth-policy/sync","api/chatgpt/promptManagement",
             "/api/youth-policy/**"
     };
 
