@@ -32,7 +32,7 @@ public class YouthPolicyService {
     private final YouthPolicyRepository youthPolicyRepository;
     private final YouthPolicyApiConfig youthPolicyApiConfig;
     private final RestTemplate restTemplate;
-    private YouthPolicyStepRepository stepRepository;
+    private final YouthPolicyStepRepository stepRepository;
 
 
     @Transactional
@@ -431,20 +431,37 @@ public class YouthPolicyService {
      */
 
     private void preprocessAndSaveSteps(YouthPolicyApiData data) {
-        YouthPolicyStep step = StepExtractor.extractSteps(
-                data.getPlcyNo(),
+        Map<String, List<String>> steps = StepExtractor.extractSteps(
                 data.getPlcyAplyMthdCn(),
                 data.getSbmsnDcmntCn(),
-                data.getSrngMthdCn()
-                );
-        System.out.println("Extracted Steps: " + step);
-        if (step != null) {
-            stepRepository.save(step);
-            System.out.println("Saved Steps: " + step);
-        }
-    }      
+                data.getSrngMthdCn());
 
+        String policyId = data.getPlcyNo();
+        String submittedDocs = data.getSbmsnDcmntCn() == null ? "없음" : data.getSbmsnDcmntCn();
 
+        YouthPolicyStep newStep = YouthPolicyStep.builder()
+                .policyId(policyId)
+                .submittedDocuments(submittedDocs)
+                .applyStep(StepExtractor.joinHtmlList(steps.get("apply")))
+                .documentStep(StepExtractor.joinHtmlList(steps.get("document")))
+                .noticeStep(StepExtractor.joinHtmlList(steps.get("notice")))
+                .caution(StepExtractor.joinHtmlList(steps.get("caution")))
+                .build();
+
+        try {
+            List<YouthPolicyStep> existing = stepRepository.findAllByPolicyId(policyId);
+            if (!existing.isEmpty()) {
+                log.info("기존 Step 삭제: {}", policyId);
+                stepRepository.deleteAll(existing);
+            }
+
+            stepRepository.save(newStep);
+            log.info("Step 저장 성공: {}", policyId);
+        } catch (Exception e) {
+            log.error("Step 저장 중 오류 발생: {}", policyId, e);
+        }                
+    }    
+    
     /**
      * 청년정책 데이터 저장 (중복 처리)
      */
