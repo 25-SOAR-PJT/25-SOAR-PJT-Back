@@ -1,5 +1,6 @@
 package org.project.soar.model.tag.service;
 
+import org.project.soar.model.tag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.springframework.stereotype.Service;
 
@@ -12,5 +13,5 @@ public interface ChatGPTService {
     Map<String, Object> isValidModel(String modelName);
     Map<String, Object> prompt(ChatCompletion chatCompletion);
 
-    List<Map<String, Object>> runPrompt();
+    List<YouthPolicyTag> runPrompt();
 }

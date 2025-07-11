@@ -7,9 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.RestTemplateConfig;
+import org.project.soar.model.tag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.project.soar.model.tag.dto.PromptRequest;
+import org.project.soar.model.tag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.tag.repository.TagRepository;
+import org.project.soar.model.tag.repository.YouthPolicyTagRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyOpenAI;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
@@ -23,6 +26,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.List.of;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,6 +35,8 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     private final RestTemplateConfig restTemplateConfig;
     public final YouthPolicyRepository youthPolicyRepository;
     public final TagRepository tagRepository;
+    public final YouthPolicyTagService youthPolicyTagService;
+    public final YouthPolicyTagRepository youthPolicyTagRepository;
 
     @Value("${openai.url.model}")
     private String modelUrl;
@@ -127,8 +134,8 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     }
 
     @Override
-    public List<Map<String, Object>> runPrompt() {
-        List<YouthPolicy> top2YouthPolicies = youthPolicyRepository.findTop2ByOrderByCreatedAtDesc();
+    public List<YouthPolicyTag> runPrompt() {
+        List<YouthPolicy> top2YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
         List<YouthPolicyOpenAI> policyOpenAIs = top2YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
@@ -144,15 +151,21 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                 .collect(Collectors.toList());
 
         HttpHeaders headers = restTemplateConfig.gptHeaders();
-        List<Map<String, Object>> results = new ArrayList<>();
+        List<YouthPolicyTag> resultList = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
 
         for (YouthPolicyOpenAI policy : policyOpenAIs) {
+            if (youthPolicyTagRepository.existsByYouthPolicy(youthPolicyRepository.getById(policy.getPolicyId()))){
+                //만약 이미 해당 정책에 태그가 존재한다면 skip
+                log.info("이미 태깅된 정책입니다. {}",policy.getPolicyId());
+                continue;
+            }
+
             Map<String, String> inputItem = new HashMap<>();
             inputItem.put("role", "user");
             inputItem.put("content", generatePolicyInputText(policy));
 
-            List<Map<String, String>> inputList = List.of(inputItem);
+            List<Map<String, String>> inputList = of(inputItem);
 
             PromptRequest requestDto = PromptRequest.builder()
                     .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "4"))
@@ -194,10 +207,13 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
                                 log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
 
-                                Map<String, Object> simplifiedResult = new HashMap<>();
-                                simplifiedResult.put("policyId", policy.getPolicyId());
-                                simplifiedResult.put("tagId", tagIds);
-                                results.add(simplifiedResult);
+                                for (Long tagId : tagIds) {
+                                    YouthPolicyTagResponse tagResponse = new YouthPolicyTagResponse(policy.getPolicyId(), tagId);
+                                    YouthPolicyTag result = youthPolicyTagService.setYouthPolicyTag(tagResponse);
+                                    log.info("Saved YouthPolicyTag: policyId={}, tagId={}", policy.getPolicyId(), tagId);
+                                    resultList.add(result);
+                                }
+
                             } else {
                                 log.warn("[경고] text가 문자열 형식이 아님: {}", textObj);
                             }
@@ -214,7 +230,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                 log.error("[에러] Prompt 호출 실패 - policyId: {}", policy.getPolicyId(), e);
             }
         }
-        return results;
+        return resultList;
     }
     public String generatePolicyInputText(YouthPolicyOpenAI policy) {
         StringBuilder builder = new StringBuilder();

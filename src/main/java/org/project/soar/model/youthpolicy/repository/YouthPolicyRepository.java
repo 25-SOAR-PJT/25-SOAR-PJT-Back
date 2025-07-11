@@ -27,6 +27,11 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
     List<YouthPolicy> searchByKeyword(@Param("keyword") String keyword);
 
     /**
+     * 정책아이디로 검색
+     */
+    YouthPolicy findByPolicyId(String policyId);
+
+    /**
      * 대분류로 검색 (카테고리 검색용)
      */
     List<YouthPolicy> findByLargeClassificationContaining(String category);
@@ -225,5 +230,7 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
     List<YouthPolicy> findByCreatedAtYearAndMonth(@Param("year") int year, @Param("month") int month);
 
     List<YouthPolicy> findTop2ByOrderByCreatedAtDesc();
+
+    List<YouthPolicy> findTop5ByOrderByCreatedAtDesc();
 }
 
