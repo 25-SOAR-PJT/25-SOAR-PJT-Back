@@ -1,9 +1,13 @@
 package org.project.soar.model.tag.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.tag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.project.soar.model.tag.service.ChatGPTService;
+import org.project.soar.model.user.dto.SignUpResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,14 +16,12 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/chatgpt")
 public class ChatGPTController {
 
     private final ChatGPTService chatGPTService;
 
-    public ChatGPTController(ChatGPTService chatGPTService) {
-        this.chatGPTService = chatGPTService;
-    }
     /**
     chatGPT 모델리스트 조회
      **/
