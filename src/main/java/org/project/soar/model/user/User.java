@@ -12,7 +12,6 @@ import java.util.List;
 @Entity
 @Table(name = "user")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -41,16 +40,11 @@ public class User extends BaseTimeEntity {
     @Column(name = "user_password", length = 255)
     private String userPassword;
 
-//    @Builder.Default
-//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JsonManagedReference
-//    private List<Auth> auths = new ArrayList<>();
-
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Permission> permissions = new ArrayList<>();
 
-//    @Builder.Default
-//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private List<SystemLog> systemLogs = new ArrayList<>();
+    public void updatePassword(String userPassword) {
+        this.userPassword = userPassword;
+    }
 }

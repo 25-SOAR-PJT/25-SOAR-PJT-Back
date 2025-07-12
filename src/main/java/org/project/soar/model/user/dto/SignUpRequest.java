@@ -19,7 +19,7 @@ public class SignUpRequest {
     private final List<Boolean> agreedTerms;
 
     @Builder
-    public SignUpRequest(String userName, Date userBirthDate, String userPhoneNumber, boolean userGender, String userEmail, String userUsername, String userPassword, String otp, List<Boolean> agreedTerms) {
+    public SignUpRequest(String userName, Date userBirthDate, String userPhoneNumber, boolean userGender, String userEmail, String userPassword, String otp, List<Boolean> agreedTerms) {
         this.userName = userName;
         this.userBirthDate = userBirthDate;
         this.userPhoneNumber = userPhoneNumber;
