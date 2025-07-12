@@ -6,7 +6,6 @@ import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.tag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.project.soar.model.tag.service.ChatGPTService;
-import org.project.soar.model.user.dto.SignUpResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

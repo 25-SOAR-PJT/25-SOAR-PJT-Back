@@ -15,5 +15,5 @@ public class YouthPolicyTagResponse {
     public YouthPolicyTagResponse(String policyId, Long tagId){
         this.policyId = policyId;
         this.tagId = tagId;
-    };
+    }
 }
