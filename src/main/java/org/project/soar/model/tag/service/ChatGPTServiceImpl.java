@@ -135,20 +135,18 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
     @Override
     public List<YouthPolicyTag> runPrompt() {
-        List<YouthPolicy> top2YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
-        List<YouthPolicyOpenAI> policyOpenAIs = top2YouthPolicies.stream()
+        List<YouthPolicy> top5YouthPolicies = youthPolicyRepository.findTop5ByOrderByCreatedAtDesc();
+        List<YouthPolicyOpenAI> policyOpenAIs = top5YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
                         youthPolicy.getPolicyName(),
                         youthPolicy.getPolicyExplanation(),
                         youthPolicy.getPolicySupportContent(),
-                        youthPolicy.getApplyMethodContent(),
-                        youthPolicy.getScreeningMethodContent(),
-                        youthPolicy.getSubmitDocumentContent(),
                         youthPolicy.getSupportTargetMinAge(),
                         youthPolicy.getSupportTargetMaxAge(),
                         youthPolicy.getSupportTargetAgeLimitYn()))
                 .collect(Collectors.toList());
+
 
         HttpHeaders headers = restTemplateConfig.gptHeaders();
         List<YouthPolicyTag> resultList = new ArrayList<>();
