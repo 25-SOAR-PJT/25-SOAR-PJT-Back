@@ -2,9 +2,11 @@ package org.project.soar.model.user.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.project.soar.model.user.dto.EmailRequestDto;
+import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.user.dto.EmailRequest;
 import org.project.soar.model.user.service.EmailService;
 import org.project.soar.model.user.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,11 +29,20 @@ public class EmailController {
      * @return 성공 메시지 또는 이미 구글 유저 에러
      */
     @PostMapping("/signup/otp")
-    public ResponseEntity<String> sendOtp(@RequestBody @Valid EmailRequestDto emailRequestDto) {
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@RequestBody @Valid EmailRequest emailRequestDto) {
         String email = emailRequestDto.getEmail().toLowerCase();
 
-        emailService.setEmail(email);
-        return ResponseEntity.ok("이메일로 인증 코드가 발송되었습니다.");
+        String result = emailService.setEmail(email);
+
+        // 이메일 형식 에러일 경우
+        if (result.equals("이메일 형식을 다시 확인해주세요.")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError(result));
+        }else if (result.equals("이미 존재하는 이메일입니다.")){
+            // 이미 존재하는 이메일일 경우
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError(result));
+        }
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "이메일로 인증 코드가 발송되었습니다."));
     }
 
     /**

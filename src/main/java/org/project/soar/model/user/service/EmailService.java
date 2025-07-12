@@ -4,6 +4,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.project.soar.config.RedisUtil;
+import org.project.soar.model.user.repository.UserRepository;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class EmailService {
     private final JavaMailSender javaMailSender;
     private final RedisUtil redisUtil;
     private static final String FROM_EMAIL = "noreply@example.com";
+    private final UserRepository userRepository;
 
     /**
      * 인증코드 생성 및 이메일 전송
@@ -26,7 +28,13 @@ public class EmailService {
      * @return 생성된 인증코드
      */
     public String setEmail(String email) {
-        validateEmail(email);
+        if (!isValidEmail(email)) {
+            return "이메일 형식을 다시 확인해주세요.";
+        }
+
+        if(userRepository.existsByUserEmail(email)){
+            return "이미 존재하는 이메일입니다.";
+        }
 
         String authCode = generateAuthCode();
         String title = "이메일 인증 코드 안내";
@@ -42,15 +50,13 @@ public class EmailService {
      * 
      * @param email 이메일 주소
      */
-    private void validateEmail(String email) {
+    private boolean isValidEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("이메일이 null이거나 공백입니다.");
+            return false;
         }
 
         String emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$";
-        if (!email.matches(emailRegex)) {
-            throw new IllegalArgumentException("유효하지 않은 이메일 주소 형식입니다.");
-        }
+        return email.matches(emailRegex);
     }
 
     /**
@@ -133,7 +139,9 @@ public class EmailService {
      */
     @Transactional
     public void sendTemporaryPassword(String email, String tempPassword) {
-        validateEmail(email);
+        if (!isValidEmail(email)) {
+            return ;
+        }
 
         String title = "임시 비밀번호 안내";
         String content = generateTemporaryPasswordEmailContent(tempPassword);

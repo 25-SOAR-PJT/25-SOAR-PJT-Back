@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class EmailCheckDto {
+public class EmailCheck {
     @Email
     @NotEmpty(message = "이메일을 입력해 주세요.")
     private String email;
