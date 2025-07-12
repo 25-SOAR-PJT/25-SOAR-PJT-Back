@@ -22,10 +22,10 @@ public class EmailService {
     private final UserRepository userRepository;
 
     /**
-     * 인증코드 생성 및 이메일 전송
+     * 인증번호 생성 및 이메일 전송
      * 
      * @param email 수신자 이메일
-     * @return 생성된 인증코드
+     * @return 생성된 인증번호
      */
     public String setEmail(String email) {
         if (!isValidEmail(email)) {
@@ -37,7 +37,7 @@ public class EmailService {
         }
 
         String authCode = generateAuthCode();
-        String title = "이메일 인증 코드 안내";
+        String title = "이메일 인증 번호 안내";
         String content = generateEmailContent(authCode);
 
         sendMail(FROM_EMAIL, email, title, content);
@@ -60,20 +60,15 @@ public class EmailService {
     }
 
     /**
-     * 인증코드 생성
+     * 인증번호 생성
      * 
-     * @return 6자리 인증코드
+     * @return 4자리 숫자 인증번호
      */
     private String generateAuthCode() {
         StringBuilder key = new StringBuilder();
         Random rand = new Random();
-        for (int i = 0; i < 6; i++) {
-            int index = rand.nextInt(2); // 0~1 랜덤
-            if (index == 0) {
-                key.append((char) (rand.nextInt(26) + 65)); // A~Z
-            } else {
-                key.append(rand.nextInt(10)); // 0~9
-            }
+        for (int i = 0; i < 4; i++) {
+            key.append(rand.nextInt(10)); // 0~9
         }
         return key.toString();
     }
@@ -81,13 +76,13 @@ public class EmailService {
     /**
      * 이메일 본문 생성
      * 
-     * @param code 인증코드
+     * @param code 인증번호
      * @return 이메일 본문 내용
      */
     private String generateEmailContent(String code) {
         return "<div style='margin:100px;'>"
-                + "<h1> 안녕하세요. MoneyLense입니다. </h1>"
-                + "<p>아래 인증 코드를 회원가입 창에 입력해주세요.</p>"
+                + "<h1> 안녕하세요. SOAR입니다. </h1>"
+                + "<p>아래 인증 번호를 회원가입 창에 입력해주세요.</p>"
                 + "<br><p>감사합니다!</p>"
                 + "<div align='center' style='border:1px solid black; font-family:verdana;'>"
                 + "<h3 style='color:blue;'>이메일 인증 코드</h3>"
@@ -119,10 +114,10 @@ public class EmailService {
     }
 
     /**
-     * 인증코드 검증
+     * 인증번호 검증
      * 
      * @param email      이메일 주소
-     * @param authNumber 인증코드
+     * @param authNumber 인증번호
      * @return 검증 결과
      */
     @Transactional(readOnly = true)
@@ -157,7 +152,7 @@ public class EmailService {
      */
     private String generateTemporaryPasswordEmailContent(String tempPassword) {
         return "<div style='margin:100px;'>"
-                + "<h1>안녕하세요. MoneyLense입니다.</h1>"
+                + "<h1>안녕하세요. SOAR입니다.</h1>"
                 + "<p>요청하신 임시 비밀번호가 생성되었습니다. 아래의 비밀번호를 사용하여 로그인 후 반드시 변경해 주세요.</p>"
                 + "<br>"
                 + "<div align='center' style='border:1px solid black; font-family:verdana;'>"
