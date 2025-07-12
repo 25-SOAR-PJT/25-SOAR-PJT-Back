@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.model.field.Field;
 import org.project.soar.model.field.repository.FieldRepository;
+import org.project.soar.model.field.service.FieldService;
 import org.project.soar.model.tag.Tag;
 import org.project.soar.model.tag.dto.TagResponse;
 import org.project.soar.model.tag.repository.TagRepository;
@@ -19,6 +20,7 @@ public class TagServiceImpl implements TagService{
 
     public final TagRepository tagRepository;
     public final FieldRepository fieldRepository;
+    public final FieldService fieldService;
 
     @Override
     public List<TagResponse> getAllTagList() {
@@ -35,6 +37,9 @@ public class TagServiceImpl implements TagService{
 
     @Override
     public List<TagResponse> setTagList() {
+        if (fieldRepository.findAll().size() == 0){
+            fieldService.setFieldList();
+        }
         List<Field> fields = fieldRepository.findAll();
         List<Tag> exitedTags = tagRepository.findAll();
         if (exitedTags.size() == 0) {

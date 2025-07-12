@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TagRepository extends JpaRepository<Tag, Long> {
     Tag findByTagId(Long tagId);
+
+    boolean existsByTagId(Long tagId);
 }
