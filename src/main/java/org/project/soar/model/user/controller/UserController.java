@@ -8,12 +8,14 @@ import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @Slf4j
@@ -58,7 +60,7 @@ public class UserController {
         logger.info("[RefreshController] Refresh-Token 요청: {}", refreshToken);
         logger.info("                 oldAccessBearer: {}", oldAccessBearer);
         TokenResponse body = userService.refreshToken(refreshToken, oldAccessBearer);
-        logger.info("🔄 [RefreshController] 응답으로 반환할 새 토큰들: {}", body);
+        logger.info("[RefreshController] 응답으로 반환할 새 토큰들: {}", body);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(body, "토큰 갱신 성공"));
     }
 
@@ -91,5 +93,56 @@ public class UserController {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<KakaoLoginResponse>) ApiResponse.createError(response.getMsg()));
+    }
+
+    // 이미 존재하는 이메일
+    @GetMapping("/check-email")
+    public ResponseEntity<ApiResponse<Boolean>> checkEmail(@RequestParam String email) {
+        boolean exists = userService.checkEmailExists(email);
+        if (exists) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(true, "이미 존재하는 이메일입니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(false, "사용 가능한 이메일입니다."));
+    }
+
+    // 아이디 찾기 (이름, 생년월일)
+    @GetMapping("/find-id")
+    public ResponseEntity<ApiResponse<FindIdResponse>> findId(@RequestBody FindIdRequest request) {
+
+        FindIdResponse response = userService.findId(request.getUserName(),request.getUserBirthDate().toLocalDate());
+
+        if (response != null) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(response, "아이디 찾기 성공"));
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body((ApiResponse<FindIdResponse>) ApiResponse.createError("아이디 찾기 실패"));
+    }
+
+    // 비밀번호 찾기 (임시 비밀번호 발급)
+    @PostMapping("/find-password")
+    public ResponseEntity<ApiResponse<String>> findPassword(@RequestBody FindPasswordRequest request) {
+        String result = userService.findPassword(request.getUserEmail(), request.getUserName());
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null,result));
+    }
+
+    // 비밀번호 재설정 (이메일, 현재 비밀번호, 새 비밀번호, 비밀번호 확인)
+    @PostMapping("/update-password")
+    public ResponseEntity<ApiResponse<?>> resetPassword(@RequestBody UpdatePasswordRequest request) {
+        String userEmail = request.getUserEmail();
+        String currentPassword = request.getCurrentPassword();
+        String newPassword = request.getNewPassword();
+        String confirmPassword = request.getConfirmPassword();
+
+        if (userEmail == null || currentPassword == null || newPassword == null || confirmPassword == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("필수 입력값이 누락되었습니다."));
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("새 비밀번호와 비밀번호 확인이 일치하지 않습니다."));
+        }
+
+        String result = userService.updatePassword(userEmail, currentPassword, newPassword);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
     }
 }

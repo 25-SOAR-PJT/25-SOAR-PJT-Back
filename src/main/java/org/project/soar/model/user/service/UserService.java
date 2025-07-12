@@ -218,9 +218,102 @@ public class UserService {
                 .socialProvider("kakao")
                 .build();
     }
+
+    @Transactional
+    public boolean checkEmailExists(String email) {
+        String normalizedEmail = email.trim().toLowerCase(Locale.getDefault());
+        return userRepository.existsByUserEmail(normalizedEmail);
+    }
+
+    @Transactional
+    public FindIdResponse findId(String userName, LocalDate userBirthDate) {
+        User user = userRepository.findByUserNameAndUserBirthDate(userName, userBirthDate);
+        if (user == null) {
+            return null; // 해당 유저가 존재하지 않음
+        }
+        return new FindIdResponse(user.getUserEmail());
+    }
+
+    @Transactional
+    public String findPassword(String userEmail, String userName) {
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null || !user.getUserName().equals(userName)) {
+            return "해당 이메일 또는 이름이 일치하는 사용자가 없습니다.";
+        }
+
+        String tempPassword = generateTemporaryPassword();
+        user.updatePassword(passwordEncoder.encode(tempPassword));
+        userRepository.save(user);
+
+        emailService.sendTemporaryPassword(userEmail, tempPassword);
+        return "임시 비밀번호가 이메일로 전송되었습니다.";
+    }
+
+    @Transactional
+    public String updatePassword(String userEmail, String currentPassword, String newPassword) {
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            return "해당 이메일로 등록된 사용자가 없습니다.";
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
+            return "현재 비밀번호가 일치하지 않습니다.";
+        }
+
+        if (!isValidPassword(newPassword)) {
+            return "새 비밀번호 형식이 올바르지 않습니다. 비밀번호는 8자 이상 16자 이하, 문자, 숫자, 특수문자를 포함해야 합니다.";
+        }
+
+        user.updatePassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return "비밀번호가 성공적으로 변경되었습니다.";
+    }
+
+    @Transactional
+    public String deleteUser(String token, String password) {
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getUserPassword())) {
+            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }
+
+        refreshTokenRepository.deleteById(user.getUserId());
+
+        kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
+//        permissionRepository.deleteAllByUser(user);
+//
+//        List<Lists> userLists = listsRepository.findAllByUser(user);
+//        for (Lists list : userLists) {
+//            productRepository.deleteAllByLists(list); // 연결된 상품 먼저 제거
+//            listsRepository.delete(list);
+//        }
+
+        userRepository.delete(user);
+
+        return "회원 탈퇴 성공";
+    }
+
     private boolean isValidPassword(String password) {
         String passwordPattern = "^(?=.*[a-z])(?=.*\\d)[a-z\\d]{8,20}$";
         return Pattern.matches(passwordPattern, password);
     }
 
+    private String generateTemporaryPassword() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        StringBuilder password;
+        do {
+            password = new StringBuilder();
+            for (int i = 0; i < 10; i++) {
+                password.append(characters.charAt(random.nextInt(characters.length())));
+            }
+        } while (!isValidPassword(password.toString())); // 규칙 만족할 때까지 반복
+        return password.toString();
+    }
 }
