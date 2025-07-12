@@ -16,9 +16,11 @@ import org.project.soar.model.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -33,6 +35,7 @@ public class UserService {
     private final PermissionService permissionService;
     private final KakaoService kakaoService;
     private final KakaoUserRepository kakaoUserRepository;
+    private final Random random = new Random();
 
     @Transactional
     public SignUpResponse signUp(SignUpRequest request, String otp, List<Boolean> agreedTerms) {
@@ -46,14 +49,14 @@ public class UserService {
         // 이메일 인증 코드 확인
         if (!emailService.checkAuthNumber(normalizedEmail, otp)) {
             return SignUpResponse.builder()
-                    .msg("이메일 인증 코드가 유효하지 않습니다.")
+                    .msg("인증번호를 다시 확인해주세요.")
                     .build();
         }
 
         // 비밀번호 보안 규칙 확인
         if (!isValidPassword(request.getUserPassword())) {
             return SignUpResponse.builder()
-                    .msg("비밀번호 형식이 올바르지 않습니다. 비밀번호는 8자 이상 16자 이하, 문자, 숫자, 특수문자를 포함해야 합니다.")
+                    .msg("비밀번호는 8~20자로 영문 소문자, 숫자를 조합해서 사용해주세요.")
                     .build();
         }
 
@@ -94,13 +97,13 @@ public class UserService {
         User user = userRepository.findByUserEmail(normalizedEmail);
         if (user == null) {
             return SignInResponse.builder()
-                    .msg("이메일이 존재하지 않습니다.")
+                    .msg("이메일을 다시 확인해주세요.")
                     .build();
         }
 
         if (!passwordEncoder.matches(request.getUserPassword(), user.getUserPassword())) {
             return SignInResponse.builder()
-                    .msg("비밀번호가 일치하지 않습니다.")
+                    .msg("비밀번호를 다시 확인해주세요.")
                     .build();
         }
 
@@ -172,41 +175,6 @@ public class UserService {
         return "로그아웃 성공";
     }
 
-    @Transactional
-    public String deleteUser(String token, String password) {
-        String subject = tokenProvider.validateTokenAndGetSubject(token);
-        String userEmail = subject.split(":")[1];
-
-        User user = userRepository.findByUserEmail(userEmail);
-        if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다.");
-        }
-
-        if (!passwordEncoder.matches(password, user.getUserPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
-        }
-
-        refreshTokenRepository.deleteById(user.getUserId());
-
-        kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
-//        permissionRepository.deleteAllByUser(user);
-//
-//        List<Lists> userLists = listsRepository.findAllByUser(user);
-//        for (Lists list : userLists) {
-//            productRepository.deleteAllByLists(list); // 연결된 상품 먼저 제거
-//            listsRepository.delete(list);
-//        }
-
-        userRepository.delete(user);
-
-        return "회원 탈퇴 성공";
-    }
-
-    private boolean isValidPassword(String password) {
-        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*]).{8,16}$";
-        return Pattern.matches(passwordPattern, password);
-    }
-
     // 카카오 로그인
     @Transactional
     public KakaoLoginResponse kakaoSignIn(String accessToken) {
@@ -250,4 +218,9 @@ public class UserService {
                 .socialProvider("kakao")
                 .build();
     }
+    private boolean isValidPassword(String password) {
+        String passwordPattern = "^(?=.*[a-z])(?=.*\\d)[a-z\\d]{8,20}$";
+        return Pattern.matches(passwordPattern, password);
+    }
+
 }
