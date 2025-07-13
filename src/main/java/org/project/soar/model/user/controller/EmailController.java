@@ -52,17 +52,17 @@ public class EmailController {
      * @return 인증 결과 메시지
      */
     @PostMapping("/signup/otp/check")
-    public String verifyOtp(@RequestBody Map<String, String> requestBody) {
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@RequestBody Map<String, String> requestBody) {
         String email = requestBody.get("email");
         String otp = requestBody.get("otp");
 
         if (email == null || otp == null) {
-            throw new IllegalArgumentException("이메일 또는 인증 코드가 누락되었습니다.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError("이메일 또는 인증 코드가 누락되었습니다."));
         }
 
         if (emailService.checkAuthNumber(email, otp)) {
-            return "이메일 인증 성공";
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "이메일 인증 성공"));
         }
-        throw new IllegalArgumentException("인증 코드가 일치하지 않습니다.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError("인증 코드가 일치하지 않습니다."));
     }
 }
