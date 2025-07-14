@@ -1,5 +1,6 @@
 package org.project.soar.model.tag.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.tag.dto.TagResponse;
 import org.project.soar.model.tag.service.TagService;
@@ -10,14 +11,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tag")
+@RequiredArgsConstructor
 public class TagController {
-
     private final TagService tagService;
-
-    public TagController(TagService tagService) {
-        this.tagService = tagService;
-    }
-
     /**
      * 태그 리스트 조회
      */
