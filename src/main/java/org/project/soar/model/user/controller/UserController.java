@@ -145,4 +145,14 @@ public class UserController {
         String result = userService.updatePassword(userEmail, currentPassword, newPassword);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
     }
+
+    /**
+     * 사용자 정보 조회
+     */
+    @GetMapping("/userinfo")
+    public ResponseEntity<ApiResponse<UserDto>> getUserInfo(){
+        log.info("로그인돼있는 유저정보를 가져옵니다");
+        UserDto result = userService.getUserByCache();
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
 }

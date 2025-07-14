@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
 import org.project.soar.model.permission.service.PermissionService;
+import org.project.soar.model.user.CustomUserDetails;
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
@@ -13,6 +14,8 @@ import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.project.soar.model.user.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -315,5 +318,27 @@ public class UserService {
             }
         } while (!isValidPassword(password.toString())); // 규칙 만족할 때까지 반복
         return password.toString();
+    }
+
+    public UserDto getUserByCache() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        log.info(String.valueOf(userDetails.getMemberId()));
+        User user = userRepository.findById(userDetails.getMemberId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        log.info(user.getUserName());
+
+        return new UserDto(
+                user.getUserId(),
+                user.getUserName(),
+                user.getUserBirthDate(),
+                user.getUserPhoneNumber(),
+                user.isUserGender(),
+                user.getUserEmail()
+        );
     }
 }
