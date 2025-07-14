@@ -1,6 +1,7 @@
 package org.project.soar.model.user.dto;
 
-import java.sql.Date;
+import java.time.LocalDate;
+
 import lombok.Builder;
 import lombok.Getter;
 
@@ -8,14 +9,14 @@ import lombok.Getter;
 public class UserDto {
     private Long userId;
     private String userName;
-    private Date userBirthDate;
+    private LocalDate userBirthDate;
     private String userPhoneNumber;
     private boolean userGender;
     private String userEmail;
 
     @Builder
-    public UserDto(Long userId, String userName, Date userBirthDate, String userPhoneNumber, boolean userGender,
-            String userEmail) {
+    public UserDto(Long userId, String userName, LocalDate userBirthDate, String userPhoneNumber, boolean userGender,
+                   String userEmail) {
         this.userId = userId;
         this.userName = userName;
         this.userBirthDate = userBirthDate;
