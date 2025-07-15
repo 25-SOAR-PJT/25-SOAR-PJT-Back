@@ -166,7 +166,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
             List<Map<String, String>> inputList = of(inputItem);
 
             PromptRequest requestDto = PromptRequest.builder()
-                    .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "4"))
+                    .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "5"))
                     .input(inputList)
                     .reasoning(Collections.emptyMap())
                     .max_output_tokens(2048)
@@ -206,7 +206,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                                 log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
 
                                 for (Long tagId : tagIds) {
-                                    YouthPolicyTagResponse tagResponse = new YouthPolicyTagResponse(policy.getPolicyId(), tagId);
+                                    YouthPolicyTagResponse tagResponse = new YouthPolicyTagResponse(policy.getPolicyId(), policy.getPolicyName(), tagId, tagRepository.findByTagId(tagId).getTagName());
                                     YouthPolicyTag result = youthPolicyTagService.setYouthPolicyTag(tagResponse);
                                     log.info("Saved YouthPolicyTag: policyId={}, tagId={}", policy.getPolicyId(), tagId);
                                     resultList.add(result);
