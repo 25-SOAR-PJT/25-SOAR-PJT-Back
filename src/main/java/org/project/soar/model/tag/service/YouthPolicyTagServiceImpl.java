@@ -29,7 +29,9 @@ public class YouthPolicyTagServiceImpl implements YouthPolicyTagService{
                 youthPolicyTagRepository.findAll().stream()
                         .map(policyTag -> new YouthPolicyTagResponse(
                                 policyTag.getYouthPolicy().getPolicyId(),
-                                policyTag.getTag().getTagId()))
+                                policyTag.getYouthPolicy().getPolicyName(),
+                                policyTag.getTag().getTagId(),
+                                policyTag.getTag().getTagName()))
                         .collect(Collectors.toList());
         return result;
     }

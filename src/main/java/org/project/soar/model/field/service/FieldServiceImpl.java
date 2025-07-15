@@ -15,20 +15,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FieldServiceImpl implements FieldService{
     public final FieldRepository fieldRepository;
-
     @Override
     public List<FieldResponse> setFieldList() {
-        List<Field> existedField = fieldRepository.findAll();
-        if (existedField.isEmpty()) {
-            List<String> names = List.of("일자리", "주거", "교육", "복지문화", "가구상황", "취업상태", "연령대");
-            List<Field> fields = names.stream()
-                    .map(name -> new Field(name))
-                    .collect(Collectors.toList());
-            fieldRepository.saveAll(fields);
-            log.info("Field 생성 완료");
-        }else {
-            log.info("Field already exists");
-        }
+        fieldRepository.deleteAll();
+        List<String> names = List.of("일자리", "주거", "교육", "복지문화", "가구상황", "취업상태", "연령대", "추가지원조건" ,"소득구간");
+        List<Field> fields = names.stream()
+                .map(name -> new Field(name))
+                .collect(Collectors.toList());
+        fieldRepository.saveAll(fields);
+        log.info("Field 생성 완료");
         return getFieldList();
     }
 
