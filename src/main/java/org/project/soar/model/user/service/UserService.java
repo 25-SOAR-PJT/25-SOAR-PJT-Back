@@ -301,7 +301,7 @@ public class UserService {
     }
 
     private boolean isValidPassword(String password) {
-        String passwordPattern = "^(?=.*[a-z])(?=.*\\d)[a-z\\d]{8,20}$";
+        String passwordPattern = "^(?=.*[a-z])(?=.*\\d).{8,20}$";
         return Pattern.matches(passwordPattern, password);
     }
 
