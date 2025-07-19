@@ -107,9 +107,12 @@ public class UserController {
 
     // 아이디 찾기 (이름, 생년월일)
     @GetMapping("/find-id")
-    public ResponseEntity<ApiResponse<FindIdResponse>> findId(@RequestBody FindIdRequest request) {
+    public ResponseEntity<ApiResponse<FindIdResponse>> findId(
+            @RequestParam String userName,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate userBirthDate,
+            @RequestParam boolean userGender) {
 
-        FindIdResponse response = userService.findId(request.getUserName(),request.getUserBirthDate().toLocalDate());
+        FindIdResponse response = userService.findId(userName,userBirthDate, userGender);
 
         if (response != null) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(response, "아이디 찾기 성공"));

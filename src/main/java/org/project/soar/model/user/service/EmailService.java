@@ -41,7 +41,8 @@ public class EmailService {
         String content = generateEmailContent(authCode);
 
         sendMail(FROM_EMAIL, email, title, content);
-        redisUtil.setDataExpire(authCode, email, 60 * 5L); // 인증코드 5분 TTL
+        //redisUtil.setDataExpire(authCode, email, 60 * 5L); // 인증코드 5분 TTL
+        redisUtil.setDataExpire(email, authCode, 60 * 5L);
         return authCode;
     }
 
@@ -121,9 +122,18 @@ public class EmailService {
      * @return 검증 결과
      */
     @Transactional(readOnly = true)
-    public boolean checkAuthNumber(String email, String authNumber) {
-        String storedEmail = redisUtil.getData(authNumber);
-        return storedEmail != null && storedEmail.equals(email);
+    public String checkAuthNumber(String email, String authNumber) {
+        String storedCode = redisUtil.getData(email);
+//        return storedEmail != null && storedEmail.equals(email);
+        if (storedCode == null) {
+            return "EXPIRED";
+        }
+
+        if (!storedCode.equals(authNumber)) {
+            return "MISMATCH";
+        }
+
+        return "SUCCESS";
     }
 
     /**

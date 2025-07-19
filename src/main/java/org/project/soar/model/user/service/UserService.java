@@ -17,11 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,7 +45,12 @@ public class UserService {
                     .build();
         }
         // 이메일 인증 코드 확인
-        if (!emailService.checkAuthNumber(normalizedEmail, otp)) {
+        String authResult = emailService.checkAuthNumber(normalizedEmail, otp);
+        if ("EXPIRED".equals(authResult)) {
+            return SignUpResponse.builder()
+                    .msg("인증번호가 만료되었습니다. 다시 요청해주세요.")
+                    .build();
+        }else if ("MISMATCH".equals(authResult)) {
             return SignUpResponse.builder()
                     .msg("인증번호를 다시 확인해주세요.")
                     .build();
@@ -226,12 +229,18 @@ public class UserService {
     }
 
     @Transactional
-    public FindIdResponse findId(String userName, LocalDate userBirthDate) {
-        User user = userRepository.findByUserNameAndUserBirthDate(userName, userBirthDate);
-        if (user == null) {
+    public FindIdResponse findId(String userName, LocalDate userBirthDate, boolean userGender) {
+        List<User> users = userRepository.findByUserNameAndUserBirthDateAndUserGender(userName, userBirthDate, userGender);
+        if (users == null || users.isEmpty()) {
             return null; // 해당 유저가 존재하지 않음
         }
-        return new FindIdResponse(user.getUserEmail());
+
+        // 이메일 리스트 추출
+        List<String> userEmails = users.stream()
+                .map(User::getUserEmail)
+                .collect(Collectors.toList());
+
+        return new FindIdResponse(userEmails);
     }
 
     @Transactional
@@ -261,7 +270,7 @@ public class UserService {
         }
 
         if (!isValidPassword(newPassword)) {
-            return "새 비밀번호 형식이 올바르지 않습니다. 비밀번호는 8자 이상 16자 이하, 문자, 숫자, 특수문자를 포함해야 합니다.";
+            return "비밀번호는 8~20자로 영문 소문자, 숫자를 조합해서 사용해주세요.";
         }
 
         user.updatePassword(passwordEncoder.encode(newPassword));
@@ -301,7 +310,7 @@ public class UserService {
     }
 
     private boolean isValidPassword(String password) {
-        String passwordPattern = "^(?=.*[a-z])(?=.*\\d)[a-z\\d]{8,20}$";
+        String passwordPattern = "^(?=.*[a-z])(?=.*\\d).{8,20}$";
         return Pattern.matches(passwordPattern, password);
     }
 

@@ -59,8 +59,8 @@ public class EmailController {
         if (email == null || otp == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError("이메일 또는 인증 코드가 누락되었습니다."));
         }
-
-        if (emailService.checkAuthNumber(email, otp)) {
+        String authResult = emailService.checkAuthNumber(email, otp);
+        if ("SUCCESS".equals(authResult)) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "이메일 인증 성공"));
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<Void>) ApiResponse.createError("인증 코드가 일치하지 않습니다."));
