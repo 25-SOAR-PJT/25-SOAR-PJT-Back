@@ -47,7 +47,12 @@ public class UserService {
                     .build();
         }
         // 이메일 인증 코드 확인
-        if (!emailService.checkAuthNumber(normalizedEmail, otp)) {
+        String authResult = emailService.checkAuthNumber(normalizedEmail, otp);
+        if ("EXPIRED".equals(authResult)) {
+            return SignUpResponse.builder()
+                    .msg("인증번호가 만료되었습니다. 다시 요청해주세요.")
+                    .build();
+        }else if ("MISMATCH".equals(authResult)) {
             return SignUpResponse.builder()
                     .msg("인증번호를 다시 확인해주세요.")
                     .build();
