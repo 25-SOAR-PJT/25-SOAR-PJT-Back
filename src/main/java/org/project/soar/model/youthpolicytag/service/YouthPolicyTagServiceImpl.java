@@ -1,13 +1,14 @@
-package org.project.soar.model.tag.service;
+package org.project.soar.model.youthpolicytag.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.project.soar.model.field.Field;
 import org.project.soar.model.tag.Tag;
-import org.project.soar.model.tag.YouthPolicyTag;
-import org.project.soar.model.tag.dto.YouthPolicyTagResponse;
+import org.project.soar.model.tag.service.TagService;
+import org.project.soar.model.youthpolicytag.YouthPolicyTag;
+import org.project.soar.model.youthpolicytag.dto.FindYouthPolicyByTagResponse;
+import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.tag.repository.TagRepository;
-import org.project.soar.model.tag.repository.YouthPolicyTagRepository;
+import org.project.soar.model.youthpolicytag.repository.YouthPolicyTagRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
 import org.springframework.stereotype.Service;
@@ -48,17 +49,24 @@ public class YouthPolicyTagServiceImpl implements YouthPolicyTagService{
                 tagService.setTagList();
             }
                 Tag myTag = tagRepository.findByTagId(youthPolicyTag.getTagId());
-                Field myField = myTag.getField();
                 newYouthPolicyTag.setYouthPolicy(myYouthPolicy);
                 newYouthPolicyTag.setTag(myTag);
-                newYouthPolicyTag.setField(myField);
                 youthPolicyTagRepository.save(newYouthPolicyTag);
-
 
         }else{
             log.info("[경고]정책이 존재하지 않습니다 태그 id : {}", youthPolicyTag.getPolicyId(), youthPolicyTag.getTagId());
         }
         return newYouthPolicyTag;
 
+    }
+    @Override
+    public FindYouthPolicyByTagResponse getYouthPolicyTagByTagID(Long tagId) {
+        List<YouthPolicy> youthPolicies = youthPolicyTagRepository.findByTagId(tagId);
+        youthPolicies.stream().map(youthPolicy -> youthPolicy.getPolicyId()).collect(Collectors.toList());
+        return new FindYouthPolicyByTagResponse(
+                tagId,
+                tagRepository.findByTagId(tagId).getTagName(),
+                youthPolicies.stream().map(youthPolicy -> youthPolicy.getPolicyId()).collect(Collectors.toList())
+        );
     }
 }

@@ -33,8 +33,11 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/v3/api-docs.yaml",
-            "/api/field/", "api/tag/","/api/youth-policy","/api/youth-policy/sync","api/chatgpt/promptManagement","/api/youthPolicyTag/",
-            "/api/youth-policy/**"
+            "/api/field/", "/api/tag/",
+            "/api/user-tag/", "/api/user-tag/**", "/api/user-tag/all",
+            "/api/youth-policy","/api/youth-policy/sync","/api/youth-policy/**",
+            "/api/youth-policy-tag/", "/api/youth-policy-tag/tag",
+            "api/chatgpt/promptManagement",
     };
 
     @Bean
