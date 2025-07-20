@@ -18,7 +18,7 @@ public class FieldServiceImpl implements FieldService{
     @Override
     public List<FieldResponse> setFieldList() {
         fieldRepository.deleteAll();
-        List<String> names = List.of("일자리", "주거", "교육", "복지문화", "가구상황", "취업상태", "연령대", "추가지원조건" ,"소득구간");
+        List<String> names = List.of("일자리", "주거", "교육", "복지문화", "가구상황", "취업상태", "연령대", "추가지원조건", "거주지역", "최종학력");
         List<Field> fields = names.stream()
                 .map(name -> new Field(name))
                 .collect(Collectors.toList());

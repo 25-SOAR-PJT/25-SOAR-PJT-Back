@@ -1,5 +1,6 @@
 package org.project.soar.model.field.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.field.dto.FieldResponse;
@@ -22,6 +23,7 @@ public class FieldController {
      * 디폴트 필드 리스트 넣기
      */
     @PostMapping("/")
+    @Operation(summary = "디폴트 필드 리스트 넣기", description = "디폴트 필드 리스트를 넣습니다.")
     public ResponseEntity<ApiResponse<List<FieldResponse>>> setFieldList(){
         List<FieldResponse> result = fieldService.setFieldList();
         ApiResponse<List<FieldResponse>> response = ApiResponse.createSuccess(result);
@@ -32,6 +34,7 @@ public class FieldController {
      * 필드 리스트 가져오기
      */
     @GetMapping("/")
+    @Operation(summary = "필드 리스트 가져오기", description = "필드 리스트를 가져옵니다.")
     public ResponseEntity<ApiResponse<List<FieldResponse>>> getFieldList(){
         List<FieldResponse> result = fieldService.getFieldList();
         ApiResponse<List<FieldResponse>> response = ApiResponse.createSuccess(result);

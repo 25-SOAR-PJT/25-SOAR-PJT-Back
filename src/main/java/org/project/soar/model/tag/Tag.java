@@ -10,7 +10,6 @@ import org.project.soar.model.field.Field;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Tag {
 
     @Id
@@ -25,6 +24,7 @@ public class Tag {
     @JoinColumn(name = "field_id", nullable = false)
     private Field field;
 
+    @Builder
     public Tag(String tag, Field field) {
         this.tagName = tag;
         this.field = field;

@@ -21,8 +21,7 @@ public class TagController {
     @GetMapping("/")
     public ResponseEntity<ApiResponse<List<TagResponse>>> getAllTagList(){
         List<TagResponse> result = tagService.getAllTagList();
-        ApiResponse<List<TagResponse>> response = ApiResponse.createSuccess(result);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
 
     /**
@@ -31,7 +30,12 @@ public class TagController {
     @PostMapping("/")
     public ResponseEntity<ApiResponse<List<TagResponse>>> setTagList(){
         List<TagResponse> result = tagService.setTagList();
-        ApiResponse<List<TagResponse>> response = ApiResponse.createSuccess(result);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok( ApiResponse.createSuccess(result));
+    }
+
+    @DeleteMapping("/")
+    public ResponseEntity<ApiResponse<String>> deleteTagList(){
+        tagService.deleteAllTagList();
+        return ResponseEntity.ok(ApiResponse.createSuccess("태그 리스트 삭제 완료"));
     }
 }

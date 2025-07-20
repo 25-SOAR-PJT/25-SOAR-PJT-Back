@@ -10,4 +10,6 @@ public interface TagService {
     List<TagResponse> getAllTagList();
 
     List<TagResponse> setTagList();
+
+    void deleteAllTagList();
 }

@@ -7,15 +7,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.RestTemplateConfig;
-import org.project.soar.model.tag.YouthPolicyTag;
+import org.project.soar.model.youthpolicytag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.project.soar.model.tag.dto.PromptRequest;
-import org.project.soar.model.tag.dto.YouthPolicyTagResponse;
+import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.tag.repository.TagRepository;
-import org.project.soar.model.tag.repository.YouthPolicyTagRepository;
+import org.project.soar.model.youthpolicytag.repository.YouthPolicyTagRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyOpenAI;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
+import org.project.soar.model.youthpolicytag.service.YouthPolicyTagService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -49,6 +50,33 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
     @Value("${openai.prompt-endpoint}")
     private String promptEndpoint;
+
+    private static final Map<String, Long> ZIPCODE_TO_TAGID = Map.ofEntries(
+            Map.entry("11680", 61L),  // 서울 강남구 - 서울시작
+            Map.entry("11740", 62L), Map.entry("11305", 63L), Map.entry("11500", 64L),
+            Map.entry("11620", 65L), Map.entry("11215", 66L), Map.entry("11530", 67L),
+            Map.entry("11545", 68L), Map.entry("11350", 69L), Map.entry("11320", 70L),
+            Map.entry("11230", 71L), Map.entry("11590", 72L), Map.entry("11440", 73L),
+            Map.entry("11410", 74L), Map.entry("11650", 75L), Map.entry("11200", 76L),
+            Map.entry("11290", 77L), Map.entry("11710", 78L), Map.entry("11470", 79L),
+            Map.entry("11560", 80L), Map.entry("11170", 81L), Map.entry("11380", 82L),
+            Map.entry("11110", 83L), Map.entry("11140", 84L), Map.entry("11260", 85L),
+            Map.entry("41111", 86L),  // 수원 장안구 - 경기도시작
+            Map.entry("41113", 87L), Map.entry("41115", 88L), Map.entry("41117", 89L),
+            Map.entry("41131", 90L), Map.entry("41133", 91L), Map.entry("41135", 92L),
+            Map.entry("41150", 93L), Map.entry("41171", 94L), Map.entry("41173", 95L),
+            Map.entry("41190", 96L), Map.entry("41210", 97L), Map.entry("41220", 98L),
+            Map.entry("41250", 99L), Map.entry("41271", 100L), Map.entry("41273", 101L),
+            Map.entry("41281", 102L), Map.entry("41285", 103L), Map.entry("41287", 104L),
+            Map.entry("41290", 105L), Map.entry("41310", 106L), Map.entry("41360", 107L),
+            Map.entry("41370", 108L), Map.entry("41390", 109L), Map.entry("41410", 110L),
+            Map.entry("41430", 111L), Map.entry("41450", 112L), Map.entry("41461", 113L),
+            Map.entry("41463", 114L), Map.entry("41465", 115L), Map.entry("41480", 116L),
+            Map.entry("41500", 117L), Map.entry("41550", 118L), Map.entry("41570", 119L),
+            Map.entry("41590", 120L), Map.entry("41610", 121L), Map.entry("41630", 122L),
+            Map.entry("41650", 123L), Map.entry("41670", 124L), Map.entry("41800", 125L),
+            Map.entry("41820", 126L), Map.entry("41830", 127L)
+    );
 
     //사용가능한 모델 리스트 조회
     @Override
@@ -89,7 +117,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
     @Override
     public Map<String, Object> isValidModel(String modelName) {
-        log.debug("모델이 유효한지 조회합니다. 모델 : "+modelName);
+        log.debug("모델이 유효한지 조회합니다. 모델 : " + modelName);
         Map<String, Object> result = new HashMap<>();
 
         //토큰 정보가 포함된 header 가져옴
@@ -135,8 +163,8 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
     @Override
     public List<YouthPolicyTag> runPrompt() {
-        List<YouthPolicy> top5YouthPolicies = youthPolicyRepository.findTop5ByOrderByCreatedAtDesc();
-        List<YouthPolicyOpenAI> policyOpenAIs = top5YouthPolicies.stream()
+        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
+        List<YouthPolicyOpenAI> policyOpenAIs = top10YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
                         youthPolicy.getPolicyName(),
@@ -146,7 +174,6 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                         youthPolicy.getSupportTargetMaxAge(),
                         youthPolicy.getSupportTargetAgeLimitYn()))
                 .collect(Collectors.toList());
-
 
         HttpHeaders headers = restTemplateConfig.gptHeaders();
         List<YouthPolicyTag> resultList = new ArrayList<>();
@@ -202,7 +229,11 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                                         .filter(s -> !s.isEmpty())
                                         .map(Long::parseLong)
                                         .collect(Collectors.toList());
+                                // zipcode
+                                String zipcode = youthPolicyRepository.findByPolicyId(policy.getPolicyId()).getZipCode();
 
+                                Long regionTagId = convertZipcodeToTagId(zipcode);
+                                tagIds.add(regionTagId);
                                 log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
 
                                 for (Long tagId : tagIds) {
@@ -211,7 +242,6 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                                     log.info("Saved YouthPolicyTag: policyId={}, tagId={}", policy.getPolicyId(), tagId);
                                     resultList.add(result);
                                 }
-
                             } else {
                                 log.warn("[경고] text가 문자열 형식이 아님: {}", textObj);
                             }
@@ -244,8 +274,11 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                 log.info("[에러] 필드 접근 실패: {}", field.getName(), e);
             }
         });
-
         return builder.toString();
+    }
+
+    public Long convertZipcodeToTagId(String zipcode) {
+        return ZIPCODE_TO_TAGID.getOrDefault(zipcode, 128L); // 기타 처리: 기본값 128
     }
 }
 
