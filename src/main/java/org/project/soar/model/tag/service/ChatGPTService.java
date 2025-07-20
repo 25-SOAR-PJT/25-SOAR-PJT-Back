@@ -1,6 +1,6 @@
 package org.project.soar.model.tag.service;
 
-import org.project.soar.model.tag.YouthPolicyTag;
+import org.project.soar.model.youthpolicytag.YouthPolicyTag;
 import org.project.soar.model.tag.dto.ChatCompletion;
 import org.springframework.stereotype.Service;
 

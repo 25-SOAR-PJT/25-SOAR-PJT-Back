@@ -1,9 +1,9 @@
-package org.project.soar.model.tag;
+package org.project.soar.model.youthpolicytag;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.project.soar.model.tag.Tag;
 import org.project.soar.model.youthpolicy.YouthPolicy;
-import org.project.soar.model.field.Field;
 
 @Entity
 @Table(name = "youth_policy_tag")
@@ -26,15 +26,4 @@ public class YouthPolicyTag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tag_id", nullable = false)
     private Tag tag;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "field_id", nullable = false)
-    private Field field;
-
-    @Builder
-    public YouthPolicyTag(YouthPolicy youthPolicy, Tag tag, Field field) {
-        this.youthPolicy = youthPolicy;
-        this.tag = tag;
-        this.field = field;
-    }
 }
