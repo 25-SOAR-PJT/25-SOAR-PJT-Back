@@ -8,10 +8,7 @@ import org.project.soar.model.youthpolicytag.dto.FindYouthPolicyByTagResponse;
 import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.youthpolicytag.service.YouthPolicyTagService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -35,4 +32,10 @@ public class YouthPolicyTagController {
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
 
+    @PostMapping("/")
+    @Operation(summary = "수동 청년 정책 태그 생성")
+    public ResponseEntity<ApiResponse<List<YouthPolicyTagResponse>>> createYouthPolicyTag(@RequestBody YouthPolicyTagRequest youthPolicyTagRequest) {
+        List<YouthPolicyTagResponse> result = youthPolicyTagService.createYouthPolicyTag(youthPolicyTagRequest);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
 }
