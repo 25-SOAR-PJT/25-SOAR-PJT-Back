@@ -5,6 +5,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
+import org.project.soar.model.comment.Comment;
+import org.project.soar.model.permission.repository.PermissionRepository;
 import org.project.soar.model.permission.service.PermissionService;
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
@@ -13,6 +15,9 @@ import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.project.soar.model.user.repository.UserRepository;
+import org.project.soar.model.usertag.repository.UserTagRepository;
+import org.project.soar.model.youthpolicy.UserYouthPolicy;
+import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +38,10 @@ public class UserService {
     private final PermissionService permissionService;
     private final KakaoService kakaoService;
     private final KakaoUserRepository kakaoUserRepository;
+    private final PermissionRepository permissionRepository;
+    private final UserYouthPolicyRepository userYouthPolicyRepository;
+    private final UserTagRepository userTagRepository;
+
     private final Random random = new Random();
 
     @Transactional
@@ -282,6 +291,15 @@ public class UserService {
         userRepository.save(user);
 
         return "비밀번호가 성공적으로 변경되었습니다.";
+    }
+
+    @Transactional
+    public String updateUserName(Long userId, String newUserName) {
+        User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
+
+        user.updateUserName(newUserName);
+        userRepository.save(user);
+        return "사용자 이름 업데이트 성공";
     }
 
     @Transactional

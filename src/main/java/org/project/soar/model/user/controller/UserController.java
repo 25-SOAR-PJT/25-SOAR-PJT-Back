@@ -151,4 +151,26 @@ public class UserController {
         String result = userService.updatePassword(userEmail, currentPassword, newPassword);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
     }
+
+    @PostMapping("/update-name")
+    public ResponseEntity<ApiResponse<String>> updateUserName(@RequestBody UpdateUserNameRequest request) {
+        Long userId = request.getUserId();
+        String newUserName = request.getUserName();
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+        }
+
+        if (newUserName == null || newUserName.equals("")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("새로운 이름을 입력해주세요."));
+        }
+
+        String result = userService.updateUserName(userId, newUserName);
+        if (result.equals("사용자 이름 업데이트 성공")) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
+    }
 }
