@@ -189,4 +189,49 @@ public class UserController {
                 .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자를 찾을 수 없습니다."));
     }
 
+    @PostMapping("/delete")
+    public ResponseEntity<ApiResponse<?>> deleteUser(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> request) {
+
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        String password = request.get("password");
+        if (password == null || password.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.createError("비밀번호가 필요합니다."));
+        }
+
+        try {
+            String result = userService.deleteUser(token, password);
+            if (result.equals("회원 탈퇴 성공")) {
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.createError(result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.createError("회원 탈퇴 실패: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/kakao/delete")
+    public ResponseEntity<ApiResponse<?>> deleteKakaoUser(@RequestHeader("Authorization") String token) {
+        log.info(">> /kakao/withdrawal 진입");
+        try {
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            log.info(">> 토큰 파싱 후: {}", token);
+            String result = userService.deleteKakaoUser(token);
+            log.info(">> 탈퇴 처리 결과: {}", result);
+            if (result.equals("카카오 사용자 삭제 성공")) {
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.createError(result));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.createError("카카오 회원 탈퇴 실패: " + e.getMessage()));
+        }
+    }
 }

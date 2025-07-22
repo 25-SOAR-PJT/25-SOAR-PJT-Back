@@ -323,27 +323,63 @@ public class UserService {
 
         User user = userRepository.findByUserEmail(userEmail);
         if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            //throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            return "사용자를 찾을 수 없습니다.";
         }
 
         if (!passwordEncoder.matches(password, user.getUserPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            //throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            return "비밀번호를 다시 확인해주세요.";
         }
 
         refreshTokenRepository.deleteById(user.getUserId());
-
         kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
-//        permissionRepository.deleteAllByUser(user);
-//
-//        List<Lists> userLists = listsRepository.findAllByUser(user);
-//        for (Lists list : userLists) {
-//            productRepository.deleteAllByLists(list); // 연결된 상품 먼저 제거
-//            listsRepository.delete(list);
-//        }
+        permissionRepository.deleteAllByUser(user);
+
+        // 사용자와 연결된 coment,UserYouthPolicy,user_tag  삭제
+        //commentRepository.deleteAllByUser(user);
+        userYouthPolicyRepository.deleteAllByUser(user);
+        userTagRepository.deleteAllByUser(user);
 
         userRepository.delete(user);
 
         return "회원 탈퇴 성공";
+    }
+
+    @Transactional
+    public String deleteKakaoUser(String token) {
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+        log.info("탈퇴 시작: {}", userEmail);
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            return "사용자를 찾을 수 없습니다.";
+        }
+
+        Optional<KakaoUser> optionalKakaoUser = kakaoUserRepository.findByUser(user);
+        if (optionalKakaoUser.isEmpty()) {
+            return "카카오 유저 정보가 없습니다.";
+        }
+
+        KakaoUser kakaoUser = optionalKakaoUser.get();
+
+        if (kakaoUser.getAccessToken() != null && !kakaoUser.getAccessToken().isEmpty()) {
+            kakaoService.unlink(kakaoUser.getAccessToken());
+        }
+
+        // 카카오 사용자 정보 삭제
+        kakaoUserRepository.delete(kakaoUser);
+        permissionRepository.deleteAllByUser(user);
+
+        // 사용자와 연결된 댓글, 청소년 정책, 유저 태그 삭제
+        //commentRepository.deleteAllByUser(user);
+        userYouthPolicyRepository.deleteAllByUser(user);
+        userTagRepository.deleteAllByUser(user);
+
+        refreshTokenRepository.deleteById(user.getUserId());
+        userRepository.delete(user);
+
+        return "카카오 사용자 삭제 성공";
     }
 
     private boolean isValidPassword(String password) {
