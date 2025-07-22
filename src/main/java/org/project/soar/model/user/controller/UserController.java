@@ -65,9 +65,12 @@ public class UserController {
     }
 
     @PostMapping("/signout")
-    public ResponseEntity<ApiResponse<String>> signOut(@RequestBody Map<String, String> request)
+    public ResponseEntity<ApiResponse<String>> signOut(@RequestHeader("Authorization") String token)
             throws JsonProcessingException {
-        String token = request.get("token");
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        log.info("token: " + token);
         String response = userService.signOut(token);
         if (response.equals("로그아웃 성공")) {
             return ResponseEntity.ok(ApiResponse.createSuccess(response));

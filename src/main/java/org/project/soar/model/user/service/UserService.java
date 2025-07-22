@@ -119,7 +119,7 @@ public class UserService {
             RefreshToken newRefreshToken = RefreshToken.builder()
                     .tokenId(user.getUserId())
                     .refreshToken(refreshToken)
-                    .User(user)
+                    .user(user)
                     .build();
             refreshTokenRepository.save(newRefreshToken);
         } else {
@@ -153,7 +153,7 @@ public class UserService {
 
         RefreshToken entity = RefreshToken.builder()
                 .tokenId(userId)
-                .User(user)
+                .user(user)
                 .refreshToken(newRefresh)
                 .build();
         refreshTokenRepository.save(entity);
@@ -163,14 +163,19 @@ public class UserService {
 
     @Transactional
     public String signOut(String token) throws JsonProcessingException {
-        String username = tokenProvider.validateTokenAndGetSubject(token).toLowerCase(Locale.getDefault());
-        Optional<User> userOptional = userRepository.findByUserEmailOptional(username);
-        if (userOptional.isEmpty() || refreshTokenRepository.findById(userOptional.get().getUserId()).isEmpty()) {
-            return "로그아웃 실패";
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            return "사용자를 찾을 수 없습니다.";
+        }
+        if (refreshTokenRepository.findById(user.getUserId()).isEmpty()) {
+            return "RefreshToken이 존재하지 않습니다.";
         }
 
         try {
-            refreshTokenRepository.deleteById(userOptional.get().getUserId());
+            refreshTokenRepository.deleteById(user.getUserId());
         } catch (Exception e) {
             return "로그아웃 실패";
         }
