@@ -173,4 +173,20 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
     }
+
+    @GetMapping("/get-userinfo/{userId}")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(@PathVariable Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+        }
+
+        UserInfoResponse userInfo = userService.getUserInfo(userId);
+        if (userInfo != null) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userInfo, "사용자 정보 조회 성공"));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자를 찾을 수 없습니다."));
+    }
+
 }
