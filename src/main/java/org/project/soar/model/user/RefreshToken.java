@@ -19,13 +19,13 @@ public class RefreshToken extends BaseTimeEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User User;
+    private User user;
 
     @Builder(toBuilder = true)
-    public RefreshToken(Long tokenId, String refreshToken,User User) {
+    public RefreshToken(Long tokenId, String refreshToken,User user) {
         this.tokenId = tokenId;
         this.refreshToken = refreshToken;
-        this.User = User;
+        this.user = user;
     }
 
     public boolean validateRefreshToken(String refreshToken) {
