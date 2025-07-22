@@ -11,7 +11,6 @@ import org.project.soar.model.youthpolicy.YouthPolicy;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class YouthPolicyTag {
 
     @Id
@@ -26,4 +25,10 @@ public class YouthPolicyTag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tag_id", nullable = false)
     private Tag tag;
+
+    @Builder
+    public YouthPolicyTag(YouthPolicy youthPolicy, Tag tag) {
+        this.youthPolicy = youthPolicy;
+        this.tag = tag;
+    }
 }

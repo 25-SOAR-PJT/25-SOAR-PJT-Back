@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.project.soar.model.tag.Tag;
 import org.project.soar.model.tag.service.TagService;
 import org.project.soar.model.youthpolicytag.YouthPolicyTag;
+import org.project.soar.model.youthpolicytag.controller.YouthPolicyTagRequest;
 import org.project.soar.model.youthpolicytag.dto.FindYouthPolicyByTagResponse;
 import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.tag.repository.TagRepository;
@@ -68,5 +69,16 @@ public class YouthPolicyTagServiceImpl implements YouthPolicyTagService{
                 tagRepository.findByTagId(tagId).getTagName(),
                 youthPolicies.stream().map(youthPolicy -> youthPolicy.getPolicyId()).collect(Collectors.toList())
         );
+    }
+
+    @Override
+    public List<YouthPolicyTagResponse> createYouthPolicyTag(YouthPolicyTagRequest youthPolicyTagRequest) {
+        YouthPolicy myYouthPolicy = youthPolicyRepository.findById(youthPolicyTagRequest.getYouthPolicyId()).orElse(null);
+        List<Long> tagIds = youthPolicyTagRequest.getTagIds();
+        List<Tag> tags = tagIds.stream().map(tagId -> tagRepository.findById(tagId).orElse(null)).collect(Collectors.toList());
+        return tags.stream().map(tag -> {
+            YouthPolicyTag result = youthPolicyTagRepository.save(new YouthPolicyTag(myYouthPolicy, tag));
+            return new YouthPolicyTagResponse(result.getYouthPolicy().getPolicyId(), result.getYouthPolicy().getPolicyName(), result.getTag().getTagId(), result.getTag().getTagName());
+        }).collect(Collectors.toList());
     }
 }
