@@ -234,4 +234,9 @@ public class UserController {
                     .body(ApiResponse.createError("카카오 회원 탈퇴 실패: " + e.getMessage()));
         }
     }
+    @PostMapping("/match-policies")
+    public ResponseEntity<ApiResponse<MatchYouthPoliciesResponse>> findMatchPolicies(@RequestParam("userId") Long userId) {
+        MatchYouthPoliciesResponse result = userService.getMatchPolicies(userId);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
 }
