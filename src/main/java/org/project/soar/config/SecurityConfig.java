@@ -35,8 +35,8 @@ public class SecurityConfig {
             "/v3/api-docs.yaml",
             "/api/field/", "/api/tag/",
             "/api/user-tag/", "/api/user-tag/**", "/api/user-tag/all",
-            "/api/youth-policy","/api/youth-policy/sync","/api/youth-policy/**",
-            "/api/youth-policy-tag/", "/api/youth-policy-tag/tag",
+            "/api/youth-policy","/api/youth-policy/sync","/api/youth-policy/**","/api/auth/match-policies",
+            "/api/youth-policy-tag/", "/api/youth-policy-tag/tag", "/api/youth-policy-tag/tags",
             "api/chatgpt/promptManagement",
             "/api/banner/**"
     };

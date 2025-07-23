@@ -232,5 +232,9 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
     List<YouthPolicy> findTop2ByOrderByCreatedAtDesc();
 
     List<YouthPolicy> findTop5ByOrderByCreatedAtDesc();
+
+    List<YouthPolicy> findTop20ByOrderByCreatedAtDesc();
+
+    List<YouthPolicy> findTop10ByOrderByCreatedAtAsc();
 }
 
