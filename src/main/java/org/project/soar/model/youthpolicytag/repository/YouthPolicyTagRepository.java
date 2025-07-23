@@ -16,4 +16,7 @@ public interface YouthPolicyTagRepository extends JpaRepository<YouthPolicyTag, 
     boolean existsByYouthPolicy(YouthPolicy youthPolicy);
     @Query("SELECT ypt.youthPolicy FROM YouthPolicyTag ypt WHERE ypt.tag.tagId = :tagId")
     List<YouthPolicy> findByTagId(@Param("tagId") Long tagId);
+
+    @Query("SELECT ypt.youthPolicy FROM YouthPolicyTag ypt WHERE ypt.tag.tagId IN :tagIds")
+    List<YouthPolicy> findByTagIds(@Param("tagIds") List<Long> tagIds);
 }
