@@ -5,9 +5,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
-import org.project.soar.model.comment.Comment;
 import org.project.soar.model.permission.repository.PermissionRepository;
 import org.project.soar.model.permission.service.PermissionService;
+import org.project.soar.model.tag.Tag;
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
@@ -16,8 +16,9 @@ import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.usertag.repository.UserTagRepository;
-import org.project.soar.model.youthpolicy.UserYouthPolicy;
 import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
+import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicytag.repository.YouthPolicyTagRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +42,7 @@ public class UserService {
     private final PermissionRepository permissionRepository;
     private final UserYouthPolicyRepository userYouthPolicyRepository;
     private final UserTagRepository userTagRepository;
-
+    private final YouthPolicyTagRepository youthPolicyTagRepository;
     private final Random random = new Random();
 
     @Transactional
@@ -397,5 +398,12 @@ public class UserService {
             }
         } while (!isValidPassword(password.toString())); // 규칙 만족할 때까지 반복
         return password.toString();
+    }
+
+    public MatchYouthPoliciesResponse getMatchPolicies(Long userId) {
+        List<Tag> tags =  userTagRepository.findAllTagByUserId(userId);
+        List<Long> tagIds = tags.stream().map(tag -> tag.getTagId()).collect(Collectors.toList());
+        List<YouthPolicy> youthPolicies = youthPolicyTagRepository.findByTagIds(tagIds);
+        return new MatchYouthPoliciesResponse(userId, tags, youthPolicies);
     }
 }
