@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "youth_policy")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -127,6 +126,18 @@ public class YouthPolicy {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "application_start_date")
+    private LocalDateTime applicationStartDate;
+
+    @Column(name = "application_end_date")
+    private LocalDateTime applicationEndDate;
+
+    @Column(name = "date_type", length = 20)
+    private String dateType;
+
+    @Column(name = "date_label", length = 50)
+    private String dateLabel;
 
     @PrePersist
     protected void onCreate() {

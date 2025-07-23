@@ -16,6 +16,8 @@ public class YouthPolicyApiData {
     // 신청 관련
     private String aplyUrlAddr; // 신청URL
     private String aplyYmd; // 신청기간
+    private String aplyBgngYmd; // 신청시작일 
+    private String aplyEndYmd; // 신청종료일
     private String plcyAplyMthdCn; // 정책신청방법내용
     private String srngMthdCn; // 심사방법내용
     private String sbmsnDcmntCn; // 제출서류내용
