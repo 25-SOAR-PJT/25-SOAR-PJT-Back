@@ -5,7 +5,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
+import org.project.soar.model.permission.repository.PermissionRepository;
 import org.project.soar.model.permission.service.PermissionService;
+import org.project.soar.model.tag.Tag;
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
@@ -13,6 +15,10 @@ import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.project.soar.model.user.repository.UserRepository;
+import org.project.soar.model.usertag.repository.UserTagRepository;
+import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
+import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicytag.repository.YouthPolicyTagRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +39,10 @@ public class UserService {
     private final PermissionService permissionService;
     private final KakaoService kakaoService;
     private final KakaoUserRepository kakaoUserRepository;
+    private final PermissionRepository permissionRepository;
+    private final UserYouthPolicyRepository userYouthPolicyRepository;
+    private final UserTagRepository userTagRepository;
+    private final YouthPolicyTagRepository youthPolicyTagRepository;
     private final Random random = new Random();
 
     @Transactional
@@ -119,7 +129,7 @@ public class UserService {
             RefreshToken newRefreshToken = RefreshToken.builder()
                     .tokenId(user.getUserId())
                     .refreshToken(refreshToken)
-                    .User(user)
+                    .user(user)
                     .build();
             refreshTokenRepository.save(newRefreshToken);
         } else {
@@ -153,7 +163,7 @@ public class UserService {
 
         RefreshToken entity = RefreshToken.builder()
                 .tokenId(userId)
-                .User(user)
+                .user(user)
                 .refreshToken(newRefresh)
                 .build();
         refreshTokenRepository.save(entity);
@@ -163,14 +173,19 @@ public class UserService {
 
     @Transactional
     public String signOut(String token) throws JsonProcessingException {
-        String username = tokenProvider.validateTokenAndGetSubject(token).toLowerCase(Locale.getDefault());
-        Optional<User> userOptional = userRepository.findByUserEmailOptional(username);
-        if (userOptional.isEmpty() || refreshTokenRepository.findById(userOptional.get().getUserId()).isEmpty()) {
-            return "로그아웃 실패";
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            return "사용자를 찾을 수 없습니다.";
+        }
+        if (refreshTokenRepository.findById(user.getUserId()).isEmpty()) {
+            return "RefreshToken이 존재하지 않습니다.";
         }
 
         try {
-            refreshTokenRepository.deleteById(userOptional.get().getUserId());
+            refreshTokenRepository.deleteById(user.getUserId());
         } catch (Exception e) {
             return "로그아웃 실패";
         }
@@ -280,33 +295,92 @@ public class UserService {
     }
 
     @Transactional
+    public String updateUserName(Long userId, String newUserName) {
+        User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
+
+        user.updateUserName(newUserName);
+        userRepository.save(user);
+        return "사용자 이름 업데이트 성공";
+    }
+
+    @Transactional
+    public UserInfoResponse getUserInfo(Long userId) {
+        User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
+
+        // 사용자 주소도 가져와야함
+        String userAddress = "서울시 강남구";
+
+        return UserInfoResponse.builder()
+                .userId(user.getUserId())
+                .userName(user.getUserName())
+                .userAddress(userAddress)
+                .build();
+    }
+
+    @Transactional
     public String deleteUser(String token, String password) {
         String subject = tokenProvider.validateTokenAndGetSubject(token);
         String userEmail = subject.split(":")[1];
 
         User user = userRepository.findByUserEmail(userEmail);
         if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            //throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            return "사용자를 찾을 수 없습니다.";
         }
 
         if (!passwordEncoder.matches(password, user.getUserPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            //throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            return "비밀번호를 다시 확인해주세요.";
         }
 
         refreshTokenRepository.deleteById(user.getUserId());
-
         kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
-//        permissionRepository.deleteAllByUser(user);
-//
-//        List<Lists> userLists = listsRepository.findAllByUser(user);
-//        for (Lists list : userLists) {
-//            productRepository.deleteAllByLists(list); // 연결된 상품 먼저 제거
-//            listsRepository.delete(list);
-//        }
+        permissionRepository.deleteAllByUser(user);
+
+        // 사용자와 연결된 coment,UserYouthPolicy,user_tag  삭제
+        //commentRepository.deleteAllByUser(user);
+        userYouthPolicyRepository.deleteAllByUser(user);
+        userTagRepository.deleteAllByUser(user);
 
         userRepository.delete(user);
 
         return "회원 탈퇴 성공";
+    }
+
+    @Transactional
+    public String deleteKakaoUser(String token) {
+        String subject = tokenProvider.validateTokenAndGetSubject(token);
+        String userEmail = subject.split(":")[1];
+        log.info("탈퇴 시작: {}", userEmail);
+        User user = userRepository.findByUserEmail(userEmail);
+        if (user == null) {
+            return "사용자를 찾을 수 없습니다.";
+        }
+
+        Optional<KakaoUser> optionalKakaoUser = kakaoUserRepository.findByUser(user);
+        if (optionalKakaoUser.isEmpty()) {
+            return "카카오 유저 정보가 없습니다.";
+        }
+
+        KakaoUser kakaoUser = optionalKakaoUser.get();
+
+        if (kakaoUser.getAccessToken() != null && !kakaoUser.getAccessToken().isEmpty()) {
+            kakaoService.unlink(kakaoUser.getAccessToken());
+        }
+
+        // 카카오 사용자 정보 삭제
+        kakaoUserRepository.delete(kakaoUser);
+        permissionRepository.deleteAllByUser(user);
+
+        // 사용자와 연결된 댓글, 청소년 정책, 유저 태그 삭제
+        //commentRepository.deleteAllByUser(user);
+        userYouthPolicyRepository.deleteAllByUser(user);
+        userTagRepository.deleteAllByUser(user);
+
+        refreshTokenRepository.deleteById(user.getUserId());
+        userRepository.delete(user);
+
+        return "카카오 사용자 삭제 성공";
     }
 
     private boolean isValidPassword(String password) {
@@ -324,5 +398,12 @@ public class UserService {
             }
         } while (!isValidPassword(password.toString())); // 규칙 만족할 때까지 반복
         return password.toString();
+    }
+
+    public MatchYouthPoliciesResponse getMatchPolicies(Long userId) {
+        List<Tag> tags =  userTagRepository.findAllTagByUserId(userId);
+        List<Long> tagIds = tags.stream().map(tag -> tag.getTagId()).collect(Collectors.toList());
+        List<YouthPolicy> youthPolicies = youthPolicyTagRepository.findByTagIds(tagIds);
+        return new MatchYouthPoliciesResponse(userId, tags, youthPolicies);
     }
 }

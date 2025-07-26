@@ -65,9 +65,12 @@ public class UserController {
     }
 
     @PostMapping("/signout")
-    public ResponseEntity<ApiResponse<String>> signOut(@RequestBody Map<String, String> request)
+    public ResponseEntity<ApiResponse<String>> signOut(@RequestHeader("Authorization") String token)
             throws JsonProcessingException {
-        String token = request.get("token");
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        log.info("token: " + token);
         String response = userService.signOut(token);
         if (response.equals("로그아웃 성공")) {
             return ResponseEntity.ok(ApiResponse.createSuccess(response));
@@ -147,5 +150,93 @@ public class UserController {
 
         String result = userService.updatePassword(userEmail, currentPassword, newPassword);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+    }
+
+    @PostMapping("/update-name")
+    public ResponseEntity<ApiResponse<String>> updateUserName(@RequestBody UpdateUserNameRequest request) {
+        Long userId = request.getUserId();
+        String newUserName = request.getUserName();
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+        }
+
+        if (newUserName == null || newUserName.equals("")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("새로운 이름을 입력해주세요."));
+        }
+
+        String result = userService.updateUserName(userId, newUserName);
+        if (result.equals("사용자 이름 업데이트 성공")) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
+    }
+
+    @GetMapping("/get-userinfo/{userId}")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(@PathVariable Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+        }
+
+        UserInfoResponse userInfo = userService.getUserInfo(userId);
+        if (userInfo != null) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userInfo, "사용자 정보 조회 성공"));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자를 찾을 수 없습니다."));
+    }
+
+    @PostMapping("/delete")
+    public ResponseEntity<ApiResponse<?>> deleteUser(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> request) {
+
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        String password = request.get("password");
+        if (password == null || password.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.createError("비밀번호가 필요합니다."));
+        }
+
+        try {
+            String result = userService.deleteUser(token, password);
+            if (result.equals("회원 탈퇴 성공")) {
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.createError(result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.createError("회원 탈퇴 실패: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/kakao/delete")
+    public ResponseEntity<ApiResponse<?>> deleteKakaoUser(@RequestHeader("Authorization") String token) {
+        log.info(">> /kakao/withdrawal 진입");
+        try {
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            log.info(">> 토큰 파싱 후: {}", token);
+            String result = userService.deleteKakaoUser(token);
+            log.info(">> 탈퇴 처리 결과: {}", result);
+            if (result.equals("카카오 사용자 삭제 성공")) {
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.createError(result));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.createError("카카오 회원 탈퇴 실패: " + e.getMessage()));
+        }
+    }
+    @PostMapping("/match-policies")
+    public ResponseEntity<ApiResponse<MatchYouthPoliciesResponse>> findMatchPolicies(@RequestParam("userId") Long userId) {
+        MatchYouthPoliciesResponse result = userService.getMatchPolicies(userId);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
     }
 }

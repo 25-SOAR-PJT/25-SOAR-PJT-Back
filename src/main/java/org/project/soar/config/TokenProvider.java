@@ -9,7 +9,6 @@ import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +23,6 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
-@PropertySource("classpath:jwt.yml")
 @Service
 public class TokenProvider {
     private final String secretKey;
