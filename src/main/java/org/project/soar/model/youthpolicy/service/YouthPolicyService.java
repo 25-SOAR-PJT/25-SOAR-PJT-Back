@@ -583,21 +583,32 @@ public class YouthPolicyService {
     }
 
     public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
-        // 1. 변환기: API 데이터를 YouthPolicy 엔티티로 변환
-        List<YouthPolicy> entityList = apiDataList.stream()
+        // 1. 서울/경기 필터링
+        List<YouthPolicyApiData> filteredList = apiDataList.stream()
+                .filter(data -> {
+                    String region = data.getRgtrUpInstCdNm(); 
+                    return region != null && (region.contains("서울") || region.contains("경기"));
+                })
+                .collect(Collectors.toList());
+
+        log.info("원본 정책 개수: {}", apiDataList.size());
+        log.info("서울/경기 정책 개수: {}", filteredList.size());
+
+        // 2. 정책 엔티티 변환
+        List<YouthPolicy> entityList = filteredList.stream()
                 .map(this::convertToYouthPolicyEntity)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        // 2. 정책 + 카테고리 저장: 기존 로직 재사용
+        // 3. 저장 (중복처리 + 카테고리 포함)
         int savedCount = saveYouthPolicyList(entityList);
 
-        // 3. 단계 저장: rawData 기준으로 전처리 + 저장
-        for (YouthPolicyApiData rawData : apiDataList) {
+        // 4. 단계 저장
+        for (YouthPolicyApiData rawData : filteredList) {
             try {
-                preprocessAndSaveSteps(rawData); // 기존 유지
+                preprocessAndSaveSteps(rawData);
             } catch (Exception e) {
-                log.error("청년정책 단계 저장 중 오류 발생: {}", e.getMessage());
+                log.error("정책 단계 저장 중 오류 발생 ({}): {}", rawData.getPlcyNo(), e.getMessage());
             }
         }
 
