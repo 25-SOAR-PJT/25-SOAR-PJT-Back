@@ -581,7 +581,32 @@ public class YouthPolicyService {
 
         return savedCount;
     }
+    
+    // public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
+    //     // 1. 변환기: API 데이터를 YouthPolicy 엔티티로 변환
+    //     List<YouthPolicy> entityList = apiDataList.stream()
+    //             .map(this::convertToYouthPolicyEntity)
+    //             .filter(Objects::nonNull)
+    //             .collect(Collectors.toList());
 
+    //     // 2. 정책 + 카테고리 저장: 기존 로직 재사용
+    //     int savedCount = saveYouthPolicyList(entityList);
+
+    //     // 3. 단계 저장: rawData 기준으로 전처리 + 저장
+    //     for (YouthPolicyApiData rawData : apiDataList) {
+    //         try {
+    //             preprocessAndSaveSteps(rawData); // 기존 유지
+    //         } catch (Exception e) {
+    //             log.error("청년정책 단계 저장 중 오류 발생: {}", e.getMessage());
+    //         }
+    //     }
+
+    //     return savedCount;
+    // }
+
+    /**
+     * 청년정책 API 데이터 저장 (서울/경기 필터링 + 중복 처리)
+     */
     public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
         // 1. 서울/경기 필터링
         List<YouthPolicyApiData> filteredList = apiDataList.stream()
