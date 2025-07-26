@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.project.soar.config.YouthPolicyApiConfig;
+import org.project.soar.model.category.CategoryType;
+import org.project.soar.model.category.repository.CategoryRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicyStep;
 import org.project.soar.model.youthpolicy.dto.*;
@@ -24,6 +26,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +39,8 @@ public class YouthPolicyService {
     private final YouthPolicyApiConfig youthPolicyApiConfig;
     private final RestTemplate restTemplate;
     private final YouthPolicyStepRepository stepRepository;
+    private final CategoryRepository categoryRepository;
+
 
 
     @Transactional
@@ -59,7 +65,7 @@ public class YouthPolicyService {
                         List<YouthPolicyApiData> youthPolicyApiDataList = apiResponse.getResult().getYouthPolicyList();
 
                         if (youthPolicyApiDataList != null && !youthPolicyApiDataList.isEmpty()) {
-                            // ✅ 핵심 변경: step 저장 포함 메서드 호출
+
                             int savedCount = saveYouthPolicyFromApi(youthPolicyApiDataList);
                             totalSavedCount += savedCount;
 
@@ -318,6 +324,27 @@ public class YouthPolicyService {
         }
         return null;
     }    
+    
+    // 정책명에 과거 연도 포함 여부 검사
+    private boolean containsPastYearInTitle(String title) {
+        if (title == null)
+            return false;
+
+        Pattern yearPattern = Pattern.compile("20(\\d{2})");
+        Matcher matcher = yearPattern.matcher(title);
+
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+
+        while (matcher.find()) {
+            int year = Integer.parseInt("20" + matcher.group(1));
+            if (year < currentYear) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * 단일 API DTO를 Entity로 변환 - 필드명 수정
@@ -326,6 +353,11 @@ public class YouthPolicyService {
         LocalDate applyStart = parseDate(data.getAplyBgngYmd());
         LocalDate applyEnd = parseDate(data.getAplyEndYmd());
         String bizEnd = data.getBizPrdEndYmd();
+
+        if (containsPastYearInTitle(data.getPlcyNm())) {
+            log.info("과거 연도 정책 제외됨: {}", data.getPlcyNm());
+            return null;
+        }
         
         DateClassifier.DateResult dateResult = DateClassifier.classify(
                 applyStart,
@@ -334,7 +366,9 @@ public class YouthPolicyService {
                 data.getAplyPrdSeCd(),
                 data.getBizPrdSeCd(),
                 data.getPlcyAplyMthdCn(),
-                data.getSrngMthdCn());
+                data.getSrngMthdCn(),
+                data.getBizPrdEtcCn() 
+        );
 
         return YouthPolicy.builder()
                 .policyId(truncateString(data.getPlcyNo(), 50))
@@ -394,7 +428,7 @@ public class YouthPolicyService {
                 .applicationStartDate(applyStart != null ? applyStart.atStartOfDay() : null)
                 .applicationEndDate(applyEnd != null ? applyEnd.atStartOfDay() : null)
 
-                // ✅ 향상된 날짜 분류 반영
+                // 향상된 날짜 분류 반영
                 .dateType(dateResult.type())
                 .dateLabel(dateResult.label())
 
@@ -491,6 +525,29 @@ public class YouthPolicyService {
             log.error("Step 저장 중 오류 발생: {}", policyId, e);
         }                
     }    
+
+    private void saveCategoryForPolicy(YouthPolicy policy) {
+    String lc = policy.getLargeClassification();
+    if (lc == null || lc.trim().isEmpty()) return;
+
+    Set<String> categoryNames = Arrays.stream(lc.split(","))
+            .map(String::trim)
+            .collect(Collectors.toSet());
+
+    for (String name : categoryNames) {
+        CategoryType.fromName(name).ifPresent(categoryType -> {
+            boolean exists = categoryRepository.findByCategoryCodeAndYouthPolicy(
+                    categoryType.getCode(), policy).isPresent();
+            if (!exists) {
+                categoryRepository.save(org.project.soar.model.category.Category.builder()
+                        .categoryCode(categoryType.getCode())
+                        .youthPolicy(policy)
+                        .build());
+            }
+        });
+    }
+}
+
     
     /**
      * 청년정책 데이터 저장 (중복 처리)
@@ -502,17 +559,23 @@ public class YouthPolicyService {
             try {
                 Optional<YouthPolicy> existingYouthPolicy = youthPolicyRepository
                         .findById(youthPolicyEntity.getPolicyId());
+
+                YouthPolicy savedPolicy;
                 if (existingYouthPolicy.isPresent()) {
                     YouthPolicy existingEntity = existingYouthPolicy.get();
                     updateExistingYouthPolicy(existingEntity, youthPolicyEntity);
-                    youthPolicyRepository.save(existingEntity);
+                    savedPolicy = youthPolicyRepository.save(existingEntity);
                 } else {
-                    youthPolicyRepository.save(youthPolicyEntity);
+                    savedPolicy = youthPolicyRepository.save(youthPolicyEntity);
                     savedCount++;
-                    log.info("Saved new youth policy: {}", youthPolicyEntity.getPolicyId());                }
+                    log.info("Saved new youth policy: {}", youthPolicyEntity.getPolicyId());
+                }
+
+                saveCategoryForPolicy(savedPolicy); 
+
             } catch (Exception exception) {
-                log.error("Failed to save youth policy: {} - {}",
-                        youthPolicyEntity.getPolicyId(), exception.getMessage());
+                log.error("Failed to save youth policy: {} - {}", youthPolicyEntity.getPolicyId(),
+                        exception.getMessage());
             }
         }
 
@@ -520,37 +583,29 @@ public class YouthPolicyService {
     }
 
     public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
+        // 1. 변환기: API 데이터를 YouthPolicy 엔티티로 변환
         List<YouthPolicy> entityList = apiDataList.stream()
-                .map(this::convertToYouthPolicyEntity) // 기존 변환기
+                .map(this::convertToYouthPolicyEntity)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        int savedCount = 0;
-        for (int i = 0; i < entityList.size(); i++) {
-            YouthPolicy entity = entityList.get(i);
-            YouthPolicyApiData rawData = apiDataList.get(i);
+        // 2. 정책 + 카테고리 저장: 기존 로직 재사용
+        int savedCount = saveYouthPolicyList(entityList);
 
+        // 3. 단계 저장: rawData 기준으로 전처리 + 저장
+        for (YouthPolicyApiData rawData : apiDataList) {
             try {
-                Optional<YouthPolicy> existing = youthPolicyRepository.findById(entity.getPolicyId());
-                if (existing.isPresent()) {
-                    updateExistingYouthPolicy(existing.get(), entity);
-                    youthPolicyRepository.save(existing.get());
-                } else {
-                    youthPolicyRepository.save(entity);
-                    savedCount++;
-                }
-
-                preprocessAndSaveSteps(rawData); // 💡 전처리 메서드 여기서 호출
-
+                preprocessAndSaveSteps(rawData); // 기존 유지
             } catch (Exception e) {
-                log.error("정책 저장 중 오류 발생: {}", e.getMessage());
+                log.error("청년정책 단계 저장 중 오류 발생: {}", e.getMessage());
             }
         }
 
         return savedCount;
-    }    
+    }
 
     /**
-     * 기존 청년정책 데이터 업데이트 - 간단하게 수정 builder 패턴 사용
+     * 기존 청년정책 데이터 업데이트 
      */
     private void updateExistingYouthPolicy(YouthPolicy existingYouthPolicy, YouthPolicy newYouthPolicyData) {
         existingYouthPolicy = existingYouthPolicy.builder()
