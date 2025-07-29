@@ -18,8 +18,18 @@ public class Category {
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "category_name", length = 100, nullable = false)
+    @Column(name = "category_code", nullable = false)
+    private int categoryCode;
+
+    @Transient 
     private String categoryName;
+
+    @PostLoad
+    public void loadName() {
+        this.categoryName = CategoryType.fromCode(categoryCode)
+                .map(CategoryType::getName)
+                .orElse("기타");
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "policy_id", referencedColumnName = "policy_id", nullable = false)

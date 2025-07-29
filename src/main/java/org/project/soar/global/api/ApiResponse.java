@@ -3,6 +3,8 @@ package org.project.soar.global.api;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -85,5 +87,10 @@ public class ApiResponse<T> {
         this.status = status;
         this.data = data;
         this.message = message;
+    }
+
+    public static Object success(YouthPolicyApplyResponseDto youthPolicyApplyResponseDto) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'success'");
     }
 }

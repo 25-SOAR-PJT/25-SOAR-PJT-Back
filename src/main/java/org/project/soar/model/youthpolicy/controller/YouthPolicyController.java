@@ -3,20 +3,17 @@ package org.project.soar.model.youthpolicy.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.project.soar.global.api.ApiResponse;
 import org.project.soar.global.scheduler.YouthPolicyScheduler;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicyStep;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
 import org.project.soar.model.youthpolicy.service.YouthPolicyService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/youth-policy")
@@ -30,42 +27,36 @@ public class YouthPolicyController {
     private final YouthPolicyStepRepository youthPolicyStepRepository;
 
     @PostMapping("/sync")
-    public ResponseEntity<Map<String, Object>> syncYouthPolicies() {
+    public ResponseEntity<ApiResponse<?>> syncYouthPolicies() {
         try {
             youthPolicyScheduler.manualSync();
             long totalCount = youthPolicyService.getTotalCount();
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "청년정책 데이터 동기화가 완료되었습니다.",
-                    "totalCount", totalCount,
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(totalCount, "청년정책 데이터 동기화가 완료되었습니다."));
         } catch (Exception e) {
             log.error("데이터 동기화 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "데이터 동기화에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("데이터 동기화 실패: " + e.getMessage()));
         }
-    }
-    
-    @GetMapping("/step/{policyId}")
-    public ResponseEntity<YouthPolicyStep> getStepByPolicyId(@PathVariable String policyId) {
-        List<YouthPolicyStep> steps = youthPolicyStepRepository.findAllByPolicyId(policyId);
-        if (steps.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(steps.get(steps.size() - 1)); // ✔️ 가장 마지막 항목 반환
     }
 
-    /**
-     * 전체 청년정책 목록 조회
-     */
+    @GetMapping("/step/{policyId}")
+    public ResponseEntity<ApiResponse<?>> getStepByPolicyId(@PathVariable String policyId) {
+        try {
+            List<YouthPolicyStep> steps = youthPolicyStepRepository.findAllByPolicyId(policyId);
+            if (steps.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "해당 정책에 대한 단계 정보가 없습니다."));
+            }
+            return ResponseEntity.ok(ApiResponse.createSuccess(steps.get(steps.size() - 1)));
+        } catch (Exception e) {
+            log.error("정책 단계 조회 실패: {}", policyId, e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("단계 조회 실패: " + e.getMessage()));
+        }
+    }
+
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllYouthPolicies(
+    public ResponseEntity<ApiResponse<?>> getAllYouthPolicies(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "") String category) {
-
         try {
             List<YouthPolicy> policies;
 
@@ -77,39 +68,30 @@ public class YouthPolicyController {
                 policies = youthPolicyService.getAllYouthPolicies();
             }
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", policies,
-                    "count", policies.size(),
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccess(policies));
         } catch (Exception e) {
             log.error("청년정책 목록 조회 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "데이터 조회에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("데이터 조회 실패: " + e.getMessage()));
         }
     }
 
-    /**
-     * 키워드로 청년정책 검색
-     */
     @GetMapping("/search")
-    public ResponseEntity<List<YouthPolicy>> searchByKeyword(@RequestParam("keyword") String keyword) {
-        List<YouthPolicy> result = youthPolicyService.searchPolicies(keyword);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<ApiResponse<?>> searchByKeyword(@RequestParam("keyword") String keyword) {
+        try {
+            List<YouthPolicy> result = youthPolicyService.searchPolicies(keyword);
+            return ResponseEntity.ok(ApiResponse.createSuccess(result));
+        } catch (Exception e) {
+            log.error("정책 키워드 검색 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("검색 실패: " + e.getMessage()));
+        }
     }
 
-    /**
-     * 페이징된 청년정책 목록 조회
-     */
     @GetMapping("/paged")
-    public ResponseEntity<Map<String, Object>> getYouthPoliciesPaged(
+    public ResponseEntity<ApiResponse<?>> getYouthPoliciesPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
-
         try {
             Sort sort = sortDir.equalsIgnoreCase("desc")
                     ? Sort.by(sortBy).descending()
@@ -118,111 +100,59 @@ public class YouthPolicyController {
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<YouthPolicy> policyPage = youthPolicyService.getYouthPoliciesPaged(pageable);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", policyPage.getContent(),
-                    "totalElements", policyPage.getTotalElements(),
-                    "totalPages", policyPage.getTotalPages(),
-                    "currentPage", page,
-                    "size", size,
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccess(policyPage));
         } catch (Exception e) {
-            log.error("페이징된 청년정책 목록 조회 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "데이터 조회에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            log.error("페이징 정책 조회 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("페이징 실패: " + e.getMessage()));
         }
     }
 
-    /**
-     * 특정 청년정책 상세 조회
-     */
     @GetMapping("/{policyId}")
-    public ResponseEntity<Map<String, Object>> getYouthPolicyById(@PathVariable String policyId) {
+    public ResponseEntity<ApiResponse<?>> getYouthPolicyById(@PathVariable String policyId) {
         try {
             YouthPolicy policy = youthPolicyService.getYouthPolicyById(policyId);
 
             if (policy != null) {
-                return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "data", policy,
-                        "timestamp", System.currentTimeMillis()));
+                return ResponseEntity.ok(ApiResponse.createSuccess(policy));
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "정책을 찾을 수 없습니다."));
             }
         } catch (Exception e) {
-            log.error("청년정책 상세 조회 실패: {}", policyId, e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "데이터 조회에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            log.error("정책 상세 조회 실패: {}", policyId, e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("정책 조회 실패: " + e.getMessage()));
         }
     }
 
-    /**
-     * 현재 신청 가능한 청년정책 조회
-     */
     @GetMapping("/current")
-    public ResponseEntity<Map<String, Object>> getCurrentYouthPolicies() {
+    public ResponseEntity<ApiResponse<?>> getCurrentYouthPolicies() {
         try {
             List<YouthPolicy> currentPolicies = youthPolicyService.getCurrentAvailablePolicies();
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", currentPolicies,
-                    "count", currentPolicies.size(),
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccess(currentPolicies));
         } catch (Exception e) {
-            log.error("현재 신청 가능한 청년정책 조회 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "데이터 조회에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            log.error("현재 신청 가능한 정책 조회 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.createError("신청 가능 정책 조회 실패: " + e.getMessage()));
         }
     }
 
-    /**
-     * 청년정책 통계 조회
-     */
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getYouthPolicyStats() {
+    public ResponseEntity<ApiResponse<?>> getYouthPolicyStats() {
         try {
-            Map<String, Object> stats = youthPolicyService.getStatistics();
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", stats,
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccess(youthPolicyService.getStatistics()));
         } catch (Exception e) {
-            log.error("청년정책 통계 조회 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "통계 데이터 조회에 실패했습니다: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            log.error("정책 통계 조회 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("정책 통계 조회 실패: " + e.getMessage()));
         }
     }
 
-    /**
-     * 데이터베이스 상태 확인
-     */
     @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> healthCheck() {
+    public ResponseEntity<ApiResponse<?>> healthCheck() {
         try {
             long totalCount = youthPolicyService.getTotalCount();
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "status", "healthy",
-                    "totalPolicies", totalCount,
-                    "timestamp", System.currentTimeMillis()));
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(totalCount, "DB 연결 정상"));
         } catch (Exception e) {
-            log.error("헬스체크 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "status", "unhealthy",
-                    "message", e.getMessage(),
-                    "timestamp", System.currentTimeMillis()));
+            log.error("헬스 체크 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("헬스 체크 실패: " + e.getMessage()));
         }
     }
 }

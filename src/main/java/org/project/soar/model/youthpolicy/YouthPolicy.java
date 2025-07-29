@@ -7,17 +7,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "youth_policy")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class YouthPolicy {
 
     @Id
-    @Column(name = "policy_id", length = 50)
+    @Column(name = "policy_id", nullable = false, length = 50)
     private String policyId;
 
-    @Column(name = "policy_name", length = 500)
+    @Column(name = "policy_name", nullable = false, length = 500)
     private String policyName;
 
     @Column(name = "policy_keyword", length = 200)
@@ -128,6 +127,18 @@ public class YouthPolicy {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "application_start_date")
+    private LocalDateTime applicationStartDate;
+
+    @Column(name = "application_end_date")
+    private LocalDateTime applicationEndDate;
+
+    @Column(name = "date_type", length = 20)
+    private String dateType;
+
+    @Column(name = "date_label", length = 50)
+    private String dateLabel;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -138,4 +149,5 @@ public class YouthPolicy {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
 }

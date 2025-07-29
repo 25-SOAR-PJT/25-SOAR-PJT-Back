@@ -4,11 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.project.soar.config.YouthPolicyApiConfig;
+import org.project.soar.model.category.CategoryType;
+import org.project.soar.model.category.repository.CategoryRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicyStep;
 import org.project.soar.model.youthpolicy.dto.*;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
+import org.project.soar.util.DateClassifier;
 import org.project.soar.util.StepExtractor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,9 +22,12 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +39,8 @@ public class YouthPolicyService {
     private final YouthPolicyApiConfig youthPolicyApiConfig;
     private final RestTemplate restTemplate;
     private final YouthPolicyStepRepository stepRepository;
+    private final CategoryRepository categoryRepository;
+
 
 
     @Transactional
@@ -57,7 +65,7 @@ public class YouthPolicyService {
                         List<YouthPolicyApiData> youthPolicyApiDataList = apiResponse.getResult().getYouthPolicyList();
 
                         if (youthPolicyApiDataList != null && !youthPolicyApiDataList.isEmpty()) {
-                            // ✅ 핵심 변경: step 저장 포함 메서드 호출
+
                             int savedCount = saveYouthPolicyFromApi(youthPolicyApiDataList);
                             totalSavedCount += savedCount;
 
@@ -305,72 +313,128 @@ public class YouthPolicyService {
                 .map(this::convertToYouthPolicyEntity)
                 .collect(Collectors.toList());
     }
+    
+    private LocalDate parseDate(String str) {
+        try {
+            if (str != null && !str.trim().isEmpty()) {
+                return LocalDate.parse(str.trim(), DateTimeFormatter.ofPattern("yyyyMMdd"));
+            }
+        } catch (Exception e) {
+            log.warn("날짜 파싱 실패: {}", str);
+        }
+        return null;
+    }    
+    
+    // 정책명에 과거 연도 포함 여부 검사
+    private boolean containsPastYearInTitle(String title) {
+        if (title == null)
+            return false;
+
+        Pattern yearPattern = Pattern.compile("20(\\d{2})");
+        Matcher matcher = yearPattern.matcher(title);
+
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+
+        while (matcher.find()) {
+            int year = Integer.parseInt("20" + matcher.group(1));
+            if (year < currentYear) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * 단일 API DTO를 Entity로 변환 - 필드명 수정
      */
-    private YouthPolicy convertToYouthPolicyEntity(YouthPolicyApiData youthPolicyApiData) {
-        YouthPolicy youthPolicyEntity = YouthPolicy.builder()
-                // 기본 정보 - Entity 필드명에 맞춰 수정
-                .policyId(truncateString(youthPolicyApiData.getPlcyNo(), 50))
-                .policyName(truncateString(youthPolicyApiData.getPlcyNm(), 500))
-                .policyKeyword(truncateString(youthPolicyApiData.getPlcyKywdNm(), 200))
-                .policyExplanation(youthPolicyApiData.getPlcyExplnCn())
-                .policySupportContent(youthPolicyApiData.getPlcySprtCn())
-                
-                // 분류 정보
-                .largeClassification(truncateString(youthPolicyApiData.getLclsfNm(), 200))
-                .mediumClassification(truncateString(youthPolicyApiData.getMclsfNm(), 200))
-                
-                // 기관 정보
-                .supervisingInstCode(youthPolicyApiData.getSprvsnInstCd())
-                .supervisingInstName(truncateString(youthPolicyApiData.getSprvsnInstCdNm(), 300))
-                .operatingInstCode(youthPolicyApiData.getOperInstCd())
-                .operatingInstName(truncateString(youthPolicyApiData.getOperInstCdNm(), 300))
-                
-                // 기간 정보
-                .businessPeriodStart(youthPolicyApiData.getBizPrdBgngYmd())
-                .businessPeriodEnd(youthPolicyApiData.getBizPrdEndYmd())
-                .businessPeriodEtc(truncateString(youthPolicyApiData.getBizPrdEtcCn(), 500))
-                
-                // 신청 관련
-                .applyMethodContent(youthPolicyApiData.getPlcyAplyMthdCn())
-                .screeningMethodContent(youthPolicyApiData.getSrngMthdCn())
-                .applyUrl(truncateString(youthPolicyApiData.getAplyUrlAddr(), 1000))
-                .submitDocumentContent(youthPolicyApiData.getSbmsnDcmntCn())
-                .etcMatterContent(youthPolicyApiData.getEtcMttrCn())
-                
-                // 참조 URL
-                .referenceUrl1(truncateString(youthPolicyApiData.getRefUrlAddr1(), 1000))
-                .referenceUrl2(truncateString(youthPolicyApiData.getRefUrlAddr2(), 1000))
-                
-                // 지원 정보
-                .supportScaleCount(youthPolicyApiData.getSprtSclCnt())
-                .supportTargetMinAge(parseInteger(youthPolicyApiData.getSprtTrgtMinAge()))
-                .supportTargetMaxAge(parseInteger(youthPolicyApiData.getSprtTrgtMaxAge()))
-                .supportTargetAgeLimitYn(youthPolicyApiData.getSprtTrgtAgeLmtYn())
-                
-                // 소득 정보
-                .earnMinAmt(parseLong(youthPolicyApiData.getEarnMinAmt()))
-                .earnMaxAmt(parseLong(youthPolicyApiData.getEarnMaxAmt()))
-                .earnEtcContent(truncateString(youthPolicyApiData.getEarnEtcCn(), 500))
-                
+    private YouthPolicy convertToYouthPolicyEntity(YouthPolicyApiData data) {
+        LocalDate applyStart = parseDate(data.getAplyBgngYmd());
+        LocalDate applyEnd = parseDate(data.getAplyEndYmd());
+        String bizEnd = data.getBizPrdEndYmd();
+
+        if (containsPastYearInTitle(data.getPlcyNm())) {
+            log.info("과거 연도 정책 제외됨: {}", data.getPlcyNm());
+            return null;
+        }
+        
+        DateClassifier.DateResult dateResult = DateClassifier.classify(
+                applyStart,
+                applyEnd,
+                bizEnd,
+                data.getAplyPrdSeCd(),
+                data.getBizPrdSeCd(),
+                data.getPlcyAplyMthdCn(),
+                data.getSrngMthdCn(),
+                data.getBizPrdEtcCn() 
+        );
+
+        return YouthPolicy.builder()
+                .policyId(truncateString(data.getPlcyNo(), 50))
+                .policyName(truncateString(data.getPlcyNm(), 500))
+                .policyKeyword(truncateString(data.getPlcyKywdNm(), 200))
+                .policyExplanation(data.getPlcyExplnCn())
+                .policySupportContent(data.getPlcySprtCn())
+
+                // 분류
+                .largeClassification(truncateString(data.getLclsfNm(), 200))
+                .mediumClassification(truncateString(data.getMclsfNm(), 200))
+
+                // 기관
+                .supervisingInstCode(data.getSprvsnInstCd())
+                .supervisingInstName(truncateString(data.getSprvsnInstCdNm(), 300))
+                .operatingInstCode(data.getOperInstCd())
+                .operatingInstName(truncateString(data.getOperInstCdNm(), 300))
+
+                // 기간
+                .businessPeriodStart(data.getBizPrdBgngYmd())
+                .businessPeriodEnd(data.getBizPrdEndYmd())
+                .businessPeriodEtc(truncateString(data.getBizPrdEtcCn(), 500))
+
+                // 신청
+                .applyMethodContent(data.getPlcyAplyMthdCn())
+                .screeningMethodContent(data.getSrngMthdCn())
+                .applyUrl(truncateString(data.getAplyUrlAddr(), 1000))
+                .submitDocumentContent(data.getSbmsnDcmntCn())
+                .etcMatterContent(data.getEtcMttrCn())
+
                 // 기타
-                .additionalApplyQualification(youthPolicyApiData.getAddAplyQlfcCndCn())
-                .inquiryCount(parseInteger(youthPolicyApiData.getInqCnt()))
-                .zipCode(youthPolicyApiData.getZipCd())
-                .policyMajorCode(truncateString(youthPolicyApiData.getPlcyMajorCd(), 100))
-                .jobCode(truncateString(youthPolicyApiData.getJobCd(), 100))
-                .schoolCode(truncateString(youthPolicyApiData.getSchoolCd(), 100))
-                
-                // 날짜 정보
-                .firstRegDt(parseDateTime(youthPolicyApiData.getFrstRegDt()))
-                .lastModifyDt(parseDateTime(youthPolicyApiData.getLastMdfcnDt()))
+                .referenceUrl1(truncateString(data.getRefUrlAddr1(), 1000))
+                .referenceUrl2(truncateString(data.getRefUrlAddr2(), 1000))
+
+                // 대상
+                .supportScaleCount(data.getSprtSclCnt())
+                .supportTargetMinAge(parseInteger(data.getSprtTrgtMinAge()))
+                .supportTargetMaxAge(parseInteger(data.getSprtTrgtMaxAge()))
+                .supportTargetAgeLimitYn(data.getSprtTrgtAgeLmtYn())
+
+                // 소득
+                .earnMinAmt(parseLong(data.getEarnMinAmt()))
+                .earnMaxAmt(parseLong(data.getEarnMaxAmt()))
+                .earnEtcContent(truncateString(data.getEarnEtcCn(), 500))
+
+                // 필터링용
+                .additionalApplyQualification(data.getAddAplyQlfcCndCn())
+                .inquiryCount(parseInteger(data.getInqCnt()))
+                .zipCode(data.getZipCd())
+                .policyMajorCode(truncateString(data.getPlcyMajorCd(), 100))
+                .jobCode(truncateString(data.getJobCd(), 100))
+                .schoolCode(truncateString(data.getSchoolCd(), 100))
+
+                // 날짜
+                .firstRegDt(parseDateTime(data.getFrstRegDt()))
+                .lastModifyDt(parseDateTime(data.getLastMdfcnDt()))
+                .applicationStartDate(applyStart != null ? applyStart.atStartOfDay() : null)
+                .applicationEndDate(applyEnd != null ? applyEnd.atStartOfDay() : null)
+
+                // 향상된 날짜 분류 반영
+                .dateType(dateResult.type())
+                .dateLabel(dateResult.label())
+
                 .build();
-
-        return youthPolicyEntity;
     }
-
+    
     /**
      * 개선된 문자열 길이 제한 유틸리티 메서드
      */
@@ -461,6 +525,29 @@ public class YouthPolicyService {
             log.error("Step 저장 중 오류 발생: {}", policyId, e);
         }                
     }    
+
+    private void saveCategoryForPolicy(YouthPolicy policy) {
+    String lc = policy.getLargeClassification();
+    if (lc == null || lc.trim().isEmpty()) return;
+
+    Set<String> categoryNames = Arrays.stream(lc.split(","))
+            .map(String::trim)
+            .collect(Collectors.toSet());
+
+    for (String name : categoryNames) {
+        CategoryType.fromName(name).ifPresent(categoryType -> {
+            boolean exists = categoryRepository.findByCategoryCodeAndYouthPolicy(
+                    categoryType.getCode(), policy).isPresent();
+            if (!exists) {
+                categoryRepository.save(org.project.soar.model.category.Category.builder()
+                        .categoryCode(categoryType.getCode())
+                        .youthPolicy(policy)
+                        .build());
+            }
+        });
+    }
+}
+
     
     /**
      * 청년정책 데이터 저장 (중복 처리)
@@ -472,63 +559,99 @@ public class YouthPolicyService {
             try {
                 Optional<YouthPolicy> existingYouthPolicy = youthPolicyRepository
                         .findById(youthPolicyEntity.getPolicyId());
+
+                YouthPolicy savedPolicy;
                 if (existingYouthPolicy.isPresent()) {
                     YouthPolicy existingEntity = existingYouthPolicy.get();
                     updateExistingYouthPolicy(existingEntity, youthPolicyEntity);
-                    youthPolicyRepository.save(existingEntity);
+                    savedPolicy = youthPolicyRepository.save(existingEntity);
                 } else {
-                    youthPolicyRepository.save(youthPolicyEntity);
+                    savedPolicy = youthPolicyRepository.save(youthPolicyEntity);
                     savedCount++;
-                    log.info("Saved new youth policy: {}", youthPolicyEntity.getPolicyId());                }
+                    log.info("Saved new youth policy: {}", youthPolicyEntity.getPolicyId());
+                }
+
+                saveCategoryForPolicy(savedPolicy); 
+
             } catch (Exception exception) {
-                log.error("Failed to save youth policy: {} - {}",
-                        youthPolicyEntity.getPolicyId(), exception.getMessage());
+                log.error("Failed to save youth policy: {} - {}", youthPolicyEntity.getPolicyId(),
+                        exception.getMessage());
+            }
+        }
+
+        return savedCount;
+    }
+    
+    // public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
+    //     // 1. 변환기: API 데이터를 YouthPolicy 엔티티로 변환
+    //     List<YouthPolicy> entityList = apiDataList.stream()
+    //             .map(this::convertToYouthPolicyEntity)
+    //             .filter(Objects::nonNull)
+    //             .collect(Collectors.toList());
+
+    //     // 2. 정책 + 카테고리 저장: 기존 로직 재사용
+    //     int savedCount = saveYouthPolicyList(entityList);
+
+    //     // 3. 단계 저장: rawData 기준으로 전처리 + 저장
+    //     for (YouthPolicyApiData rawData : apiDataList) {
+    //         try {
+    //             preprocessAndSaveSteps(rawData); // 기존 유지
+    //         } catch (Exception e) {
+    //             log.error("청년정책 단계 저장 중 오류 발생: {}", e.getMessage());
+    //         }
+    //     }
+
+    //     return savedCount;
+    // }
+
+    /**
+     * 청년정책 API 데이터 저장 (서울/경기 필터링 + 중복 처리)
+     */
+    public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
+        // 1. 서울/경기 필터링
+        List<YouthPolicyApiData> filteredList = apiDataList.stream()
+                .filter(data -> {
+                    String region = data.getRgtrUpInstCdNm(); 
+                    return region != null && (region.contains("서울") || region.contains("경기"));
+                })
+                .collect(Collectors.toList());
+
+        log.info("원본 정책 개수: {}", apiDataList.size());
+        log.info("서울/경기 정책 개수: {}", filteredList.size());
+
+        // 2. 정책 엔티티 변환
+        List<YouthPolicy> entityList = filteredList.stream()
+                .map(this::convertToYouthPolicyEntity)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        // 3. 저장 (중복처리 + 카테고리 포함)
+        int savedCount = saveYouthPolicyList(entityList);
+
+        // 4. 단계 저장
+        for (YouthPolicyApiData rawData : filteredList) {
+            try {
+                preprocessAndSaveSteps(rawData);
+            } catch (Exception e) {
+                log.error("정책 단계 저장 중 오류 발생 ({}): {}", rawData.getPlcyNo(), e.getMessage());
             }
         }
 
         return savedCount;
     }
 
-    public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
-        List<YouthPolicy> entityList = apiDataList.stream()
-                .map(this::convertToYouthPolicyEntity) // 기존 변환기
-                .collect(Collectors.toList());
-
-        int savedCount = 0;
-        for (int i = 0; i < entityList.size(); i++) {
-            YouthPolicy entity = entityList.get(i);
-            YouthPolicyApiData rawData = apiDataList.get(i);
-
-            try {
-                Optional<YouthPolicy> existing = youthPolicyRepository.findById(entity.getPolicyId());
-                if (existing.isPresent()) {
-                    updateExistingYouthPolicy(existing.get(), entity);
-                    youthPolicyRepository.save(existing.get());
-                } else {
-                    youthPolicyRepository.save(entity);
-                    savedCount++;
-                }
-
-                preprocessAndSaveSteps(rawData); // 💡 전처리 메서드 여기서 호출
-
-            } catch (Exception e) {
-                log.error("정책 저장 중 오류 발생: {}", e.getMessage());
-            }
-        }
-
-        return savedCount;
-    }    
-
     /**
-     * 기존 청년정책 데이터 업데이트 - 간단하게 수정
+     * 기존 청년정책 데이터 업데이트 
      */
     private void updateExistingYouthPolicy(YouthPolicy existingYouthPolicy, YouthPolicy newYouthPolicyData) {
-        existingYouthPolicy.setPolicyName(newYouthPolicyData.getPolicyName());
-        existingYouthPolicy.setPolicyKeyword(newYouthPolicyData.getPolicyKeyword());
-        existingYouthPolicy.setPolicyExplanation(newYouthPolicyData.getPolicyExplanation());
-        existingYouthPolicy.setPolicySupportContent(newYouthPolicyData.getPolicySupportContent());
-        existingYouthPolicy.setLargeClassification(newYouthPolicyData.getLargeClassification());
-        existingYouthPolicy.setMediumClassification(newYouthPolicyData.getMediumClassification());
-        existingYouthPolicy.setLastModifyDt(newYouthPolicyData.getLastModifyDt());
+        existingYouthPolicy = existingYouthPolicy.builder()
+                .policyName(newYouthPolicyData.getPolicyName())
+                .policyKeyword(newYouthPolicyData.getPolicyKeyword())
+                .policyExplanation(newYouthPolicyData.getPolicyExplanation())
+                .policySupportContent(newYouthPolicyData.getPolicySupportContent())
+                .largeClassification(newYouthPolicyData.getLargeClassification())
+                .mediumClassification(newYouthPolicyData.getMediumClassification())
+                .lastModifyDt(newYouthPolicyData.getLastModifyDt())
+                .build();
     }
 }
