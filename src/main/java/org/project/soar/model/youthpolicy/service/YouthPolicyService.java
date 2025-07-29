@@ -363,8 +363,6 @@ public class YouthPolicyService {
                 applyStart,
                 applyEnd,
                 bizEnd,
-                data.getAplyPrdSeCd(),
-                data.getBizPrdSeCd(),
                 data.getPlcyAplyMthdCn(),
                 data.getSrngMthdCn(),
                 data.getBizPrdEtcCn() 

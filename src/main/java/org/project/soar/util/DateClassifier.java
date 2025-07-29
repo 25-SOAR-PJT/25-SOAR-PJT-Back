@@ -12,8 +12,6 @@ public class DateClassifier {
             LocalDate applyStart,
             LocalDate applyEnd,
             String businessPeriodEnd,
-            String applyPeriodCode,
-            String businessPeriodCode,
             String applyMethodContent,
             String screeningMethodContent,
             String businessPeriodEtc) {
