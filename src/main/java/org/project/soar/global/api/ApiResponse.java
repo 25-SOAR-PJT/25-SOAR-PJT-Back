@@ -3,8 +3,6 @@ package org.project.soar.global.api;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -52,6 +50,7 @@ public class ApiResponse<T> {
     public static ApiResponse<?> createSuccessWithNoContent(String s) {
         return new ApiResponse<>(Status.SUCCESS, null, null);
     }
+    
 
     /**
      * Hibernate Validator에 의해 유효하지 않은 데이터로 인해 API 호출이 거부될때 반환
@@ -89,8 +88,4 @@ public class ApiResponse<T> {
         this.message = message;
     }
 
-    public static Object success(YouthPolicyApplyResponseDto youthPolicyApplyResponseDto) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'success'");
-    }
 }
