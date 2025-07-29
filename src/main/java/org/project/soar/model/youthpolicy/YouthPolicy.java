@@ -13,10 +13,10 @@ import java.time.LocalDateTime;
 public class YouthPolicy {
 
     @Id
-    @Column(name = "policy_id", length = 50)
+    @Column(name = "policy_id", nullable = false, length = 50)
     private String policyId;
 
-    @Column(name = "policy_name", length = 500)
+    @Column(name = "policy_name", nullable = false, length = 500)
     private String policyName;
 
     @Column(name = "policy_keyword", length = 200)
@@ -149,4 +149,5 @@ public class YouthPolicy {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
 }
