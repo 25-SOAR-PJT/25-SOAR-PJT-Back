@@ -18,7 +18,7 @@ public class FieldServiceImpl implements FieldService{
     @Override
     public List<FieldResponse> setFieldList() {
         fieldRepository.deleteAll();
-        List<String> names = List.of("일자리", "주거", "교육", "복지문화", "가구상황", "취업상태", "연령대", "추가지원조건", "거주지역", "최종학력");
+        List<String> names = List.of("일자리", "주거", "교육", "복지문화", "취업상태", "연령대", "추가지원조건", "최종학력", "거주지역");
         List<Field> fields = names.stream()
                 .map(name -> new Field(name))
                 .collect(Collectors.toList());
@@ -31,11 +31,11 @@ public class FieldServiceImpl implements FieldService{
     public List<FieldResponse> getFieldList() {
         List<Field> fields = fieldRepository.findAll();
         List<FieldResponse> result = fields.stream()
-                                            .map(field -> FieldResponse.builder()
-                                                                        .fieldId(field.getFieldId())
-                                                                        .fieldName(field.getFieldName())
-                                                    .build())
-                                            .collect(Collectors.toList());
+                .map(field -> FieldResponse.builder()
+                        .fieldId(field.getFieldId())
+                        .fieldName(field.getFieldName())
+                        .build())
+                .collect(Collectors.toList());
         return result;
     }
 }

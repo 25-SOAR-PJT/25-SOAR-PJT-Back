@@ -52,30 +52,30 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     private String promptEndpoint;
 
     private static final Map<String, Long> ZIPCODE_TO_TAGID = Map.ofEntries(
-            Map.entry("11680", 61L),  // 서울 강남구 - 서울시작
-            Map.entry("11740", 62L), Map.entry("11305", 63L), Map.entry("11500", 64L),
-            Map.entry("11620", 65L), Map.entry("11215", 66L), Map.entry("11530", 67L),
-            Map.entry("11545", 68L), Map.entry("11350", 69L), Map.entry("11320", 70L),
-            Map.entry("11230", 71L), Map.entry("11590", 72L), Map.entry("11440", 73L),
-            Map.entry("11410", 74L), Map.entry("11650", 75L), Map.entry("11200", 76L),
-            Map.entry("11290", 77L), Map.entry("11710", 78L), Map.entry("11470", 79L),
-            Map.entry("11560", 80L), Map.entry("11170", 81L), Map.entry("11380", 82L),
-            Map.entry("11110", 83L), Map.entry("11140", 84L), Map.entry("11260", 85L),
-            Map.entry("41111", 86L),  // 수원 장안구 - 경기도시작
-            Map.entry("41113", 87L), Map.entry("41115", 88L), Map.entry("41117", 89L),
-            Map.entry("41131", 90L), Map.entry("41133", 91L), Map.entry("41135", 92L),
-            Map.entry("41150", 93L), Map.entry("41171", 94L), Map.entry("41173", 95L),
-            Map.entry("41190", 96L), Map.entry("41210", 97L), Map.entry("41220", 98L),
-            Map.entry("41250", 99L), Map.entry("41271", 100L), Map.entry("41273", 101L),
-            Map.entry("41281", 102L), Map.entry("41285", 103L), Map.entry("41287", 104L),
-            Map.entry("41290", 105L), Map.entry("41310", 106L), Map.entry("41360", 107L),
-            Map.entry("41370", 108L), Map.entry("41390", 109L), Map.entry("41410", 110L),
-            Map.entry("41430", 111L), Map.entry("41450", 112L), Map.entry("41461", 113L),
-            Map.entry("41463", 114L), Map.entry("41465", 115L), Map.entry("41480", 116L),
-            Map.entry("41500", 117L), Map.entry("41550", 118L), Map.entry("41570", 119L),
-            Map.entry("41590", 120L), Map.entry("41610", 121L), Map.entry("41630", 122L),
-            Map.entry("41650", 123L), Map.entry("41670", 124L), Map.entry("41800", 125L),
-            Map.entry("41820", 126L), Map.entry("41830", 127L)
+            Map.entry("11680", 63L),  // 서울 강남구 - 서울시작
+            Map.entry("11740", 64L), Map.entry("11305", 65L), Map.entry("11500", 66L),
+            Map.entry("11620", 67L), Map.entry("11215", 68L), Map.entry("11530", 69L),
+            Map.entry("11545", 70L), Map.entry("11350", 71L), Map.entry("11320", 72L),
+            Map.entry("11230", 73L), Map.entry("11590", 74L), Map.entry("11440", 75L),
+            Map.entry("11410", 76L), Map.entry("11650", 77L), Map.entry("11200", 78L),
+            Map.entry("11290", 79L), Map.entry("11710", 80L), Map.entry("11470", 81L),
+            Map.entry("11560", 82L), Map.entry("11170", 83L), Map.entry("11380", 84L),
+            Map.entry("11110", 85L), Map.entry("11140", 86L), Map.entry("11260", 87L),
+            Map.entry("41111", 88L),  // 수원 장안구 - 경기도시작
+            Map.entry("41113", 89L), Map.entry("41115", 90L), Map.entry("41117", 91L),
+            Map.entry("41131", 92L), Map.entry("41133", 93L), Map.entry("41135", 94L),
+            Map.entry("41150", 95L), Map.entry("41171", 96L), Map.entry("41173", 97L),
+            Map.entry("41190", 98L), Map.entry("41210", 99L), Map.entry("41220", 100L),
+            Map.entry("41250", 101L), Map.entry("41271", 102L), Map.entry("41273", 103L),
+            Map.entry("41281", 104L), Map.entry("41285", 105L), Map.entry("41287", 106L),
+            Map.entry("41290", 107L), Map.entry("41310", 108L), Map.entry("41360", 109L),
+            Map.entry("41370", 110L), Map.entry("41390", 111L), Map.entry("41410", 112L),
+            Map.entry("41430", 113L), Map.entry("41450", 114L), Map.entry("41461", 115L),
+            Map.entry("41463", 116L), Map.entry("41465", 117L), Map.entry("41480", 118L),
+            Map.entry("41500", 119L), Map.entry("41550", 120L), Map.entry("41570", 121L),
+            Map.entry("41590", 122L), Map.entry("41610", 123L), Map.entry("41630", 124L),
+            Map.entry("41650", 125L), Map.entry("41670", 126L), Map.entry("41800", 127L),
+            Map.entry("41820", 128L), Map.entry("41830", 129L)
     );
 
     //사용가능한 모델 리스트 조회
@@ -163,7 +163,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
     @Override
     public List<YouthPolicyTag> runPrompt() {
-        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
+        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtAsc();
         List<YouthPolicyOpenAI> policyOpenAIs = top10YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
@@ -171,8 +171,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                         youthPolicy.getPolicyExplanation(),
                         youthPolicy.getPolicySupportContent(),
                         youthPolicy.getSupportTargetMinAge(),
-                        youthPolicy.getSupportTargetMaxAge(),
-                        youthPolicy.getSupportTargetAgeLimitYn()))
+                        youthPolicy.getSupportTargetMaxAge()))
                 .collect(Collectors.toList());
 
         HttpHeaders headers = restTemplateConfig.gptHeaders();
@@ -230,10 +229,14 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                                         .map(Long::parseLong)
                                         .collect(Collectors.toList());
                                 // zipcode
-                                String zipcode = youthPolicyRepository.findByPolicyId(policy.getPolicyId()).getZipCode();
+                                String zipcodeText = youthPolicyRepository.findByPolicyId(policy.getPolicyId()).getZipCode();
 
-                                Long regionTagId = convertZipcodeToTagId(zipcode);
-                                tagIds.add(regionTagId);
+                                String[] zipcodes = zipcodeText.split(",");
+                                for (String zipcode : zipcodes)
+                                    if (zipcode != null && !zipcode.isEmpty()) {
+                                        Long regionTagId = convertZipcodeToTagId(zipcode);
+                                        tagIds.add(regionTagId);
+                                    }
                                 log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
 
                                 for (Long tagId : tagIds) {
@@ -264,17 +267,19 @@ public class ChatGPTServiceImpl implements ChatGPTService{
         StringBuilder builder = new StringBuilder();
 
         Arrays.stream(YouthPolicyOpenAI.class.getDeclaredFields()).forEach(field -> {
+            if (field.getName().equals("policyId")) return; // policyId 제외
             field.setAccessible(true);
             try {
                 Object value = field.get(policy);
-                builder.append(field.getName()).append(": ")
-                        .append(value != null ? value.toString() : "")
-                        .append("\n");
+                if (value != null) {// 줄바꿈 제거 + 중복공백 제거 + 붙이기
+                    String compact = value.toString().replaceAll("\\s+", "");  // 모든 공백 제거
+                    builder.append(compact);
+                }
             } catch (IllegalAccessException e) {
                 log.info("[에러] 필드 접근 실패: {}", field.getName(), e);
             }
         });
-        return builder.toString();
+        return builder.toString().trim(); // 마지막 공백 제거
     }
 
     public Long convertZipcodeToTagId(String zipcode) {
