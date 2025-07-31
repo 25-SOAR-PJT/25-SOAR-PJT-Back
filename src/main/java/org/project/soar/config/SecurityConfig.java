@@ -38,7 +38,8 @@ public class SecurityConfig {
             "/api/youth-policy","/api/youth-policy/sync","/api/youth-policy/**","/api/auth/match-policies",
             "/api/youth-policy-tag/", "/api/youth-policy-tag/tag", "/api/youth-policy-tag/tags",
             "api/chatgpt/promptManagement",
-            "/api/banner/**"
+            "/api/banner/**",
+            "/api/comment/**", "/api/comment/",
     };
 
     @Bean
