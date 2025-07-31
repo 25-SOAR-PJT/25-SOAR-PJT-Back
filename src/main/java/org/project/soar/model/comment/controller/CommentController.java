@@ -1,0 +1,65 @@
+package org.project.soar.model.comment.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.comment.dto.CommentResponse;
+import org.project.soar.model.comment.service.CommentService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/comment")
+@RequiredArgsConstructor
+public class CommentController {
+    private final CommentService commentService;
+
+    @GetMapping("/")
+    @Operation(summary="전체 댓글 조회", description="모든 댓글을 조회합니다.")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getAllComment() {
+        List<CommentResponse> result = commentService.getAllComment();
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @GetMapping("/policy/{policyId}")
+    @Operation(summary="특정 정책의 모든 댓글 조회", description="특정 정책의 모든 댓글을 조회합니다.")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getAllCommentByPolicyID(@PathVariable(value = "policyId") String policyId) {
+        List<CommentResponse> result = commentService.getAllCommentByPolicyId(policyId);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary="특정 사용자의 모든 댓글 조회", description="특정 사용자의 모든 댓글을 조회합니다.")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getAllCommentByUserId(@PathVariable(value = "userId") String userId) {
+        List<CommentResponse> result = commentService.getAllCommentByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @PostMapping("/")
+    @Operation(summary="새로운 댓글 생성", description="새로운 댓글을 생성합니다.")
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> createComment(@RequestBody CommentRequest commentRequest) {
+        List<CommentResponse> result = commentService.createComment(commentRequest);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "댓글 수정", description = "ID에 해당하는 댓글을 수정합니다.")
+    public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
+            @PathVariable Long id,
+            @RequestBody CommentRequest commentRequest) {
+        CommentResponse result = commentService.updateComment(id, commentRequest);
+        return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "댓글 삭제", description = "ID에 해당하는 댓글을 삭제합니다.")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long id) {
+        commentService.deleteComment(id);
+        return ResponseEntity.ok(ApiResponse.createSuccess(null));
+    }
+
+}
