@@ -1,4 +1,4 @@
-package org.project.soar.model.youthpolicytag.controller;
+package org.project.soar.model.youthpolicytag.dto;
 
 import lombok.*;
 

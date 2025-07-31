@@ -13,15 +13,13 @@ public class YouthPolicyOpenAI {
     private String policySupportContent;
     private Integer supportTargetMinAge;
     private Integer supportTargetMaxAge;
-    private String supportTargetAgeLimitYn;
     @Builder
-    public YouthPolicyOpenAI(String policyId, String policyName, String policyExplanation, String policySupportContent, Integer supportTargetMinAge, Integer supportTargetMaxAge, String supportTargetAgeLimitYn) {
+    public YouthPolicyOpenAI(String policyId, String policyName, String policyExplanation, String policySupportContent, Integer supportTargetMinAge, Integer supportTargetMaxAge) {
         this.policyId = policyId;
         this.policyName = policyName;
         this.policyExplanation = policyExplanation;
         this.policySupportContent = policySupportContent;
         this.supportTargetMinAge = supportTargetMinAge;
         this.supportTargetMaxAge = supportTargetMaxAge;
-        this.supportTargetAgeLimitYn = supportTargetAgeLimitYn;
     }
 }
