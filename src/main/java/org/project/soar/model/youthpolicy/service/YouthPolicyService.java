@@ -652,4 +652,18 @@ public class YouthPolicyService {
                 .lastModifyDt(newYouthPolicyData.getLastModifyDt())
                 .build();
     }
+
+    /**
+     * 마감임박 지원사업 리스트
+     */
+    public Page<YouthPolicy> getLatestPoliciesByEndDate(Pageable pageable) {
+        try {
+            Page<YouthPolicy> policies = youthPolicyRepository.findLatestPoliciesByEndDate(pageable);
+            return policies ;
+        } catch (Exception e) {
+            log.error("Error getting latest policies by end date", e);
+            throw new RuntimeException("마감임박 지원사업 조회 중 오류가 발생했습니다.", e);
+        }
+    }
+
 }

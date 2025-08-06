@@ -1,4 +1,5 @@
 package org.project.soar.model.youthpolicy.repository;
+import org.project.soar.model.user.User;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -236,5 +237,18 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
     List<YouthPolicy> findTop20ByOrderByCreatedAtDesc();
 
     List<YouthPolicy> findTop10ByOrderByCreatedAtAsc();
+
+    /**
+     * 마감임박 지원사업 리스트
+     */
+    @Query("""
+        SELECT p
+        FROM YouthPolicy p
+        WHERE p.businessPeriodEnd IS NOT NULL
+          AND TRIM(p.businessPeriodEnd) <> ''
+          AND FUNCTION('STR_TO_DATE', p.businessPeriodEnd, '%Y%m%d') >= CURRENT_DATE
+        ORDER BY p.businessPeriodEnd ASC
+    """)
+    Page<YouthPolicy> findLatestPoliciesByEndDate(Pageable pageable);
 }
 

@@ -1,6 +1,7 @@
 package org.project.soar.model.comment.repository;
 
 import org.project.soar.model.comment.Comment;
+import org.project.soar.model.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,4 +14,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     // YouthPolicy 엔티티 내부의 policyId 값을 기준으로 검색
     List<Comment> findByYouthPolicy_PolicyId(String policyId);
+
+    void deleteAllByUser(User user);
 }

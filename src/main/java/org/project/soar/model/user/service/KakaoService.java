@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.User;
+import org.project.soar.model.user.enums.Role;
 import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,10 +30,10 @@ import java.util.Optional;
 @Slf4j
 public class KakaoService {
 
-    @Value("${kakao.api_key}") // ✅ 카카오 API 키 (REST API 키)
+    @Value("${kakao.api_key}") // 카카오 API 키 (REST API 키)
     private String kakaoApiKey;
 
-    @Value("${kakao.redirect_uri}") // ✅ 카카오 로그인 Redirect URI
+    @Value("${kakao.redirect_uri}") //카카오 로그인 Redirect URI
     private String kakaoRedirectUri;
 
     private final KakaoUserRepository kakaoUserRepository;
@@ -129,7 +130,8 @@ public class KakaoService {
                     .userEmail(kakaoId + "@kakao.com") // 임시 이메일 설정
                     .userPassword("") // 소셜 로그인이라 비밀번호 설정 없음
                     .userGender(true) 
-                    .userBirthDate(LocalDate.now())
+                    .userBirthDate(null)
+                    .userRole(Role.USER)
                     .build();
 
             userRepository.save(newUser);

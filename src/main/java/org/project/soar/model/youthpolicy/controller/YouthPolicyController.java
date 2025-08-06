@@ -155,4 +155,23 @@ public class YouthPolicyController {
             return ResponseEntity.internalServerError().body(ApiResponse.createError("헬스 체크 실패: " + e.getMessage()));
         }
     }
+
+    // 마감임박 지원사업 리스트
+    @GetMapping("/latest")
+    public ResponseEntity<ApiResponse<?>> getLatestPoliciesByEndDate(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+
+            Pageable pageable = PageRequest.of(page, size);
+            Page<YouthPolicy> policies = youthPolicyService.getLatestPoliciesByEndDate(pageable);
+
+
+            return ResponseEntity.ok(ApiResponse.createSuccess(policies));
+        } catch (Exception e) {
+            log.error("마감임박 지원사업 조회 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("마감임박 지원사업 조회 실패: " + e.getMessage()));
+        }
+    }
+
 }

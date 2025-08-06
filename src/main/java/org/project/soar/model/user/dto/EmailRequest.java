@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter
-@Setter
 public class EmailRequest {
 
     @NotEmpty(message = "이메일은 비워둘 수 없습니다.")

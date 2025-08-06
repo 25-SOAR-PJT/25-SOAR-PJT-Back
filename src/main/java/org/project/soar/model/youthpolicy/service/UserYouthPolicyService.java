@@ -2,13 +2,18 @@ package org.project.soar.model.youthpolicy.service;
 
 import lombok.RequiredArgsConstructor;
 import org.project.soar.model.user.User;
+import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.youthpolicy.UserYouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.awt.print.Pageable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +21,7 @@ public class UserYouthPolicyService {
 
     private final YouthPolicyRepository youthPolicyRepository;
     private final UserYouthPolicyRepository userYouthPolicyRepository;
+    private final UserRepository userRepository;
 
     /**
      * 정책 신청 처리 로직
@@ -50,5 +56,38 @@ public class UserYouthPolicyService {
         userYouthPolicyRepository.save(userPolicy);
 
         return policy.getApplyUrl(); // applyUrl 필드명 맞춤 (getter 있음 확인)
+    }
+
+    /**
+     * 실시간 인기 지원사업
+     */
+    public List<YouthPolicy> getPopularPolicies() {
+        try {
+            return userYouthPolicyRepository.findTop10ByApplicationCount((PageRequest.of(0, 10)));
+        } catch (Exception e) {
+            throw new RuntimeException("실시간 인기 지원사업 조회 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    /**
+     * 나이대별 실시간 인기 지원사업
+     */
+    public List<YouthPolicy> getPopularPoliciesAge(Long userId) {
+        try {
+            User user = userRepository.findByUserId(userId)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+            // 실제 나이 계산
+            int age = LocalDate.now().getYear() - user.getUserBirthDate().getYear();
+            if (LocalDate.now().getDayOfYear() < user.getUserBirthDate().getDayOfYear()) {
+                age--;
+            }
+            // 10대/20대/30대... 나이대 계산
+            int ageGroup = (age / 10) * 10;
+
+            // 나이대에 맞는 정책 Top 10 조회
+            return userYouthPolicyRepository.findTop10PopularByAgeGroup(ageGroup, PageRequest.of(0, 10));
+        } catch (Exception e) {
+            throw new RuntimeException("실시간 인기 지원사업 조회 중 오류가 발생했습니다.", e);
+        }
     }
 }

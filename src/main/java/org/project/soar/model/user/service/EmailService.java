@@ -124,13 +124,12 @@ public class EmailService {
     @Transactional(readOnly = true)
     public String checkAuthNumber(String email, String authNumber) {
         String storedCode = redisUtil.getData(email);
-//        return storedEmail != null && storedEmail.equals(email);
         if (storedCode == null) {
-            return "EXPIRED";
+            return "EXPIRED"; // 인증번호 만료
         }
 
         if (!storedCode.equals(authNumber)) {
-            return "MISMATCH";
+            return "MISMATCH"; // 번호 틀림
         }
 
         return "SUCCESS";

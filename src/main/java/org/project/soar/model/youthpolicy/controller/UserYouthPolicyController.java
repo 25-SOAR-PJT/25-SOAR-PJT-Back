@@ -6,8 +6,10 @@ import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.user.User;
 import org.project.soar.model.user.repository.UserRepository;
+import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyBookmarkResponseDto;
+import org.project.soar.model.youthpolicy.dto.YouthPolicyLatestResponseDto;
 import org.project.soar.model.youthpolicy.service.UserYouthPolicyService;
 import org.project.soar.model.youthpolicy.service.YouthPolicyBookmarkService;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -132,6 +135,47 @@ public class UserYouthPolicyController {
                 "정책 북마크 상태 조회됨: policyId=%s, bookmarked=%b", policyId, bookmarked);
 
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(bookmarked, message));
+    }
+
+    /**
+     * 북마크된 지업사업 중 가장 종료일이 가까운 정책 조회 API
+     */
+    @GetMapping("/bookmarks/latest/{userId}")
+    public ResponseEntity<ApiResponse<YouthPolicyLatestResponseDto>> getLatestBookmarkByEndDate(
+            @PathVariable Long userId) {
+
+        YouthPolicyLatestResponseDto youthPolicy = bookmarkService.getLatestBookmarkByEndDate(userId);
+        if (youthPolicy == null) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "북마크된 정책이 없습니다."));
+        }
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(youthPolicy, "가장 최근 종료일이 가까운 정책 조회됨"));
+    }
+
+    /**
+     * 인기 정책 조회 API (신청 기준)
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<?>> getPopularPolicies() {
+        try {
+            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPolicies();
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 나이대별 인기 정책 조회 API (신청 기준)
+     */
+    @GetMapping("/popular/age-group/{userId}")
+    public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(@PathVariable Long userId) {
+        try {
+            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPoliciesAge(userId);
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
     }
 
     private String extractAccessToken(HttpServletRequest request) {
