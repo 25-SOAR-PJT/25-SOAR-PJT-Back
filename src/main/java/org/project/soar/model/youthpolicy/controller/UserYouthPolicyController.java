@@ -151,6 +151,33 @@ public class UserYouthPolicyController {
 
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(youthPolicy, "가장 최근 종료일이 가까운 정책 조회됨"));
     }
+
+    /**
+     * 인기 정책 조회 API (신청 기준)
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<?>> getPopularPolicies() {
+        try {
+            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPolicies();
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 나이대별 인기 정책 조회 API (신청 기준)
+     */
+    @GetMapping("/popular/age-group/{userId}")
+    public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(@PathVariable Long userId) {
+        try {
+            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPoliciesAge(userId);
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
+    }
+
     private String extractAccessToken(HttpServletRequest request) {
         String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (bearer != null && bearer.startsWith("Bearer ")) {
