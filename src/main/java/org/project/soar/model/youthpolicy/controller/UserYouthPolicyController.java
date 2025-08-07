@@ -178,6 +178,15 @@ public class UserYouthPolicyController {
         }
     }
 
+    /**
+     * 신청한 정책 개수 API
+     */
+    @GetMapping("/applied/count/{userId}")
+    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(@PathVariable Long userId) {
+        int count = userYouthPolicyService.getAppliedPolicyCount(userId);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
+    }
+
     private String extractAccessToken(HttpServletRequest request) {
         String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (bearer != null && bearer.startsWith("Bearer ")) {

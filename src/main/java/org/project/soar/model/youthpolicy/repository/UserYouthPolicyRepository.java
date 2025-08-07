@@ -63,5 +63,6 @@ public interface UserYouthPolicyRepository extends JpaRepository<UserYouthPolicy
     """, nativeQuery = true)
     List<YouthPolicy> findTop10PopularByAgeGroup(@Param("ageGroup") int ageGroup, Pageable pageable);
 
+    Integer countByUser(User user); // 카운트만 반환
 }
 
