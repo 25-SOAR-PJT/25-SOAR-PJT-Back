@@ -62,4 +62,10 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.createSuccess(null));
     }
 
+    @GetMapping("/applied/count/{userId}")
+    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(@PathVariable(value = "userId") Long userId) {
+        int count = commentService.getCommentCount(userId);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
+    }
+
 }

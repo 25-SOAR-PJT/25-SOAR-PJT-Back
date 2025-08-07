@@ -51,6 +51,7 @@ public class TokenProvider {
         return Jwts.builder()
                 .signWith(new SecretKeySpec(secretKey.getBytes(), SignatureAlgorithm.HS512.getJcaName()))
                 .setSubject(userSpecification) // JWT 토큰 제목에 사용자 ID와 사용자명 포함
+                .claim("role", user.getUserRole().name()) // role 정보
                 .setIssuer(issuer) // JWT 토큰 발급자
                 .setIssuedAt(Timestamp.valueOf(LocalDateTime.now())) // JWT 토큰 발급 시간
                 .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES))) // JWT 토큰 만료 시간
@@ -137,6 +138,15 @@ public class TokenProvider {
         } catch (Exception e) {
             throw new RuntimeException("ID Token 파싱 실패", e);
         }
-    }    
+    }
+
+    public Claims parseAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey.getBytes())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
 
 }

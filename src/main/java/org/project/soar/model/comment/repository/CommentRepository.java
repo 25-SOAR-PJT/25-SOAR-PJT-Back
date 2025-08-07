@@ -16,4 +16,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByYouthPolicy_PolicyId(String policyId);
 
     void deleteAllByUser(User user);
+
+    Integer countByUser(User user);
 }

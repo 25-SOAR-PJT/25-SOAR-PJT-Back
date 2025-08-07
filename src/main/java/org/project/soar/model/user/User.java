@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.project.soar.global.abstracts.BaseTimeEntity;
 import org.project.soar.model.permission.Permission;
+import org.project.soar.model.user.enums.Role;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -44,10 +45,17 @@ public class User extends BaseTimeEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Permission> permissions = new ArrayList<>();
 
+    @Column(name = "user_role", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Role userRole;
+
     public void updatePassword(String userPassword) {
         this.userPassword = userPassword;
     }
     public void updateUserName(String userName) {
         this.userName = userName;
+    }
+    public void updateUserRole(Role role) {
+        this.userRole = role;
     }
 }

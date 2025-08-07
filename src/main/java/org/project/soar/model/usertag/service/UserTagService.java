@@ -11,4 +11,5 @@ public interface UserTagService {
     UserTagResponse setUserTag(UserTagRequest userTagRequest);
     List<UserTagResponse> findAllUserTags();
     UserTagResponse findUserTagByUserId(Long userId);
+    public String getUserResidence(Long userId);
 }
