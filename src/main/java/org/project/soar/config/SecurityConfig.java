@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 // URL 인증 정책 설정
                 .authorizeHttpRequests(requests -> requests
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // 관리자만
                         .requestMatchers(allowedUrls).permitAll() // 허용된 URL 목록은 인증 없이 접근 가능
                         .anyRequest().authenticated() // 나머지 모든 요청은 인증 필요
                 )

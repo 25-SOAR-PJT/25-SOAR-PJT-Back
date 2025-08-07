@@ -1,5 +1,6 @@
 package org.project.soar.config;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -87,20 +88,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private User parseUserSpecification(String token) {
-        String subject = Optional.ofNullable(token)
-                .filter(t -> t.length() > 10)
-                .map(tokenProvider::validateTokenAndGetSubject)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or missing token"));
+//        String subject = Optional.ofNullable(token)
+//                .filter(t -> t.length() > 10)
+//                .map(tokenProvider::validateTokenAndGetSubject)
+//                .orElseThrow(() -> new IllegalArgumentException("Invalid or missing token"));
+//
+//        logger.info("Parsed subject from token: {}", subject);
+//
+//        String[] split = subject.split(":");
+//        if (split.length != 2) {
+//            throw new IllegalArgumentException(
+//                    "Invalid token format. Expected format: 'userId:role'. Found: " + subject);
+//        }
+//
+//        return new User(split[0], "", List.of(new SimpleGrantedAuthority(split[1])));
+        Claims claims = tokenProvider.parseAllClaims(token); // Claims 전체 읽기
+
+        String subject = claims.getSubject(); // "3:bangchaewon713@gmail.com"
+        String role = claims.get("role", String.class); // "ADMIN" or "USER"
 
         logger.info("Parsed subject from token: {}", subject);
 
         String[] split = subject.split(":");
         if (split.length != 2) {
             throw new IllegalArgumentException(
-                    "Invalid token format. Expected format: 'userId:role'. Found: " + subject);
+                    "Invalid token format. Expected format: 'userId:userEmail'. Found: " + subject);
         }
 
-        return new User(split[0], "", List.of(new SimpleGrantedAuthority(split[1])));
+        return new org.springframework.security.core.userdetails.User(
+                split[1], // username(email)
+                "",
+                List.of(new SimpleGrantedAuthority("ROLE_" + role)) // ROLE_ADMIN or ROLE_USER
+        );
     }
     
     private void setAuthentication(User principal, String token, HttpServletRequest req) {

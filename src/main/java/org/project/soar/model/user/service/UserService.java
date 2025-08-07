@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
+import org.project.soar.model.comment.repository.CommentRepository;
 import org.project.soar.model.permission.repository.PermissionRepository;
 import org.project.soar.model.permission.service.PermissionService;
 import org.project.soar.model.tag.Tag;
@@ -12,12 +13,15 @@ import org.project.soar.model.user.KakaoUser;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
 import org.project.soar.model.user.dto.*;
+import org.project.soar.model.user.enums.Role;
 import org.project.soar.model.user.repository.KakaoUserRepository;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
 import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.usertag.repository.UserTagRepository;
+import org.project.soar.model.usertag.service.UserTagService;
 import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicy.repository.YouthPolicyBookmarkRepository;
 import org.project.soar.model.youthpolicytag.repository.YouthPolicyTagRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,6 +47,8 @@ public class UserService {
     private final UserYouthPolicyRepository userYouthPolicyRepository;
     private final UserTagRepository userTagRepository;
     private final YouthPolicyTagRepository youthPolicyTagRepository;
+    private final CommentRepository commentRepository;
+    private final YouthPolicyBookmarkRepository youthPolicyBookmarkRepository;
     private final Random random = new Random();
 
     @Transactional
@@ -80,6 +86,7 @@ public class UserService {
                 .userGender(request.isUserGender())
                 .userEmail(request.getUserEmail())
                 .userPassword(passwordEncoder.encode(request.getUserPassword()))
+                .userRole(Role.USER)
                 .build();
 
         userRepository.save(user);
@@ -334,8 +341,9 @@ public class UserService {
         kakaoUserRepository.findByUser(user).ifPresent(kakaoUserRepository::delete);
         permissionRepository.deleteAllByUser(user);
 
-        // 사용자와 연결된 coment,UserYouthPolicy,user_tag  삭제
-        //commentRepository.deleteAllByUser(user);
+        // 사용자와 연결된 coment,UserYouthPolicy,user_tag,북마크  삭제
+        youthPolicyBookmarkRepository.findAllByUser(user).forEach(youthPolicyBookmarkRepository::delete);
+        commentRepository.deleteAllByUser(user);
         userYouthPolicyRepository.deleteAllByUser(user);
         userTagRepository.deleteAllByUser(user);
 
@@ -369,8 +377,9 @@ public class UserService {
         kakaoUserRepository.delete(kakaoUser);
         permissionRepository.deleteAllByUser(user);
 
-        // 사용자와 연결된 댓글, 청소년 정책, 유저 태그 삭제
-        //commentRepository.deleteAllByUser(user);
+        // 사용자와 연결된 댓글, 청소년 정책, 유저 태그, 북마크 삭제
+        youthPolicyBookmarkRepository.findAllByUser(user).forEach(youthPolicyBookmarkRepository::delete);
+        commentRepository.deleteAllByUser(user);
         userYouthPolicyRepository.deleteAllByUser(user);
         userTagRepository.deleteAllByUser(user);
 
