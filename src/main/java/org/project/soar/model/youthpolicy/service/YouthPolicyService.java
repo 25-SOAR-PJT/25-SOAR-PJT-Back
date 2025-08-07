@@ -363,9 +363,12 @@ public class YouthPolicyService {
                 applyStart,
                 applyEnd,
                 bizEnd,
+                data.getPlcySprtCn(),
                 data.getPlcyAplyMthdCn(),
                 data.getSrngMthdCn(),
-                data.getBizPrdEtcCn() 
+                data.getBizPrdEtcCn(),
+                data.getPlcyNm(), 
+                LocalDate.now() 
         );
 
         return YouthPolicy.builder()
@@ -604,18 +607,36 @@ public class YouthPolicyService {
 
     /**
      * 청년정책 API 데이터 저장 (서울/경기 필터링 + 중복 처리)
-     */
+     */ 
     public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
-        // 1. 서울/경기 필터링
+        int currentYear = LocalDate.now().getYear();
+
+        // 1. 서울/경기 필터링 + 과거 연도 필터링
         List<YouthPolicyApiData> filteredList = apiDataList.stream()
                 .filter(data -> {
-                    String region = data.getRgtrUpInstCdNm(); 
+                    String region = data.getRgtrUpInstCdNm();
                     return region != null && (region.contains("서울") || region.contains("경기"));
+                })
+                .filter(data -> {
+                    String policyId = data.getPlcyNo();
+                    if (policyId != null && policyId.length() >= 4) {
+                        try {
+                            int yearFromPolicyId = Integer.parseInt(policyId.substring(0, 4));
+                            if (yearFromPolicyId < currentYear) {
+                                log.info("과거 연도 정책 제외됨 (policyId={}): {}", policyId, data.getPlcyNm());
+                                return false;
+                            }
+                        } catch (NumberFormatException e) {
+                            log.warn("정책 ID에서 연도 파싱 실패 (policyId={})", policyId);
+                            return false;
+                        }
+                    }
+                    return true;
                 })
                 .collect(Collectors.toList());
 
         log.info("원본 정책 개수: {}", apiDataList.size());
-        log.info("서울/경기 정책 개수: {}", filteredList.size());
+        log.info("서울/경기 + 연도 필터링 후 정책 개수: {}", filteredList.size());
 
         // 2. 정책 엔티티 변환
         List<YouthPolicy> entityList = filteredList.stream()
