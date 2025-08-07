@@ -304,11 +304,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserInfoResponse getUserInfo(Long userId) {
+    public UserInfoResponse getUserInfo(Long userId, String userAddress) {
         User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
-
-        // 사용자 주소도 가져와야함
-        String userAddress = "서울시 강남구";
 
         return UserInfoResponse.builder()
                 .userId(user.getUserId())
