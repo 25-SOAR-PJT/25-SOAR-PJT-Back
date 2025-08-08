@@ -55,7 +55,7 @@ public class ChatGPTController {
      **/
     @PostMapping("/promptManagement")
     @Operation(summary = "youthPolicy_Tag 생성", description = "자동 태깅 실행")
-    public ResponseEntity<ApiResponse<List<YouthPolicyTag>>> runPrompt() {
+    public ResponseEntity<ApiResponse<List<YouthPolicyTag>>> runPrompt() throws InterruptedException {
         List<YouthPolicyTag> result = chatGPTService.runPrompt();
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<List<YouthPolicyTag>>) ApiResponse.createError("empty"));
