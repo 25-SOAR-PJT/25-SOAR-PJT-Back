@@ -13,5 +13,5 @@ public interface ChatGPTService {
     Map<String, Object> isValidModel(String modelName);
     Map<String, Object> prompt(ChatCompletion chatCompletion);
 
-    List<YouthPolicyTag> runPrompt();
+    List<YouthPolicyTag> runPrompt() throws InterruptedException;
 }

@@ -23,8 +23,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.util.List.of;
@@ -38,6 +41,8 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     public final TagRepository tagRepository;
     public final YouthPolicyTagService youthPolicyTagService;
     public final YouthPolicyTagRepository youthPolicyTagRepository;
+    private static final int MAX_RETRIES = 3;
+
 
     @Value("${openai.url.model}")
     private String modelUrl;
@@ -162,8 +167,12 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     }
 
     @Override
-    public List<YouthPolicyTag> runPrompt() {
-        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtAsc();
+    public List<YouthPolicyTag> runPrompt() throws InterruptedException {
+        return runPrompt(0); // 최초 호출
+    }
+
+    public List<YouthPolicyTag> runPrompt(int retryCount) throws InterruptedException {
+        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
         List<YouthPolicyOpenAI> policyOpenAIs = top10YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
@@ -177,11 +186,11 @@ public class ChatGPTServiceImpl implements ChatGPTService{
         HttpHeaders headers = restTemplateConfig.gptHeaders();
         List<YouthPolicyTag> resultList = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
+        Set<String> processedPolicyIds = new HashSet<>();
 
         for (YouthPolicyOpenAI policy : policyOpenAIs) {
-            if (youthPolicyTagRepository.existsByYouthPolicy(youthPolicyRepository.getById(policy.getPolicyId()))){
-                //만약 이미 해당 정책에 태그가 존재한다면 skip
-                log.info("이미 태깅된 정책입니다. {}",policy.getPolicyId());
+            if (youthPolicyTagRepository.existsByYouthPolicy(youthPolicyRepository.getById(policy.getPolicyId()))) {
+                log.info("이미 태깅된 정책입니다. {}", policy.getPolicyId());
                 continue;
             }
 
@@ -192,7 +201,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
             List<Map<String, String>> inputList = of(inputItem);
 
             PromptRequest requestDto = PromptRequest.builder()
-                    .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "5"))
+                    .prompt(new PromptRequest.Prompt("pmpt_685a20474a2c8190adce753fb6276c590acaebac451f042b", "7"))
                     .input(inputList)
                     .reasoning(Collections.emptyMap())
                     .max_output_tokens(2048)
@@ -208,15 +217,14 @@ public class ChatGPTServiceImpl implements ChatGPTService{
 
                 log.info("[Raw 응답 JSON] {}", response.getBody());
 
-                Map<String, Object> parsed = mapper.readValue(response.getBody(), new TypeReference<>() {
-                });
+                Map<String, Object> parsed = mapper.readValue(response.getBody(), new TypeReference<>() {});
                 Object outputObj = parsed.get("output");
 
                 if (outputObj instanceof List<?>) {
                     List<?> outputList = (List<?>) outputObj;
                     Map<String, Object> output = (Map<String, Object>) outputList.get(0);
-
                     Object tagIdObj = output.get("content");
+
                     if (tagIdObj instanceof List<?> contentList && !contentList.isEmpty()) {
                         Object first = contentList.get(0);
                         if (first instanceof Map<?, ?> contentMap) {
@@ -228,41 +236,59 @@ public class ChatGPTServiceImpl implements ChatGPTService{
                                         .filter(s -> !s.isEmpty())
                                         .map(Long::parseLong)
                                         .collect(Collectors.toList());
-                                // zipcode
-                                String zipcodeText = youthPolicyRepository.findByPolicyId(policy.getPolicyId()).getZipCode();
 
+                                String zipcodeText = youthPolicyRepository.findByPolicyId(policy.getPolicyId()).getZipCode();
                                 String[] zipcodes = zipcodeText.split(",");
-                                for (String zipcode : zipcodes)
+                                for (String zipcode : zipcodes) {
                                     if (zipcode != null && !zipcode.isEmpty()) {
                                         Long regionTagId = convertZipcodeToTagId(zipcode);
                                         tagIds.add(regionTagId);
                                     }
-                                log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
+                                }
 
+                                log.info("[Prompt 결과] policyId: {}, tagIds: {}", policy.getPolicyId(), tagIds);
                                 for (Long tagId : tagIds) {
                                     YouthPolicyTagResponse tagResponse = new YouthPolicyTagResponse(policy.getPolicyId(), policy.getPolicyName(), tagId, tagRepository.findByTagId(tagId).getTagName());
                                     YouthPolicyTag result = youthPolicyTagService.setYouthPolicyTag(tagResponse);
                                     log.info("Saved YouthPolicyTag: policyId={}, tagId={}", policy.getPolicyId(), tagId);
                                     resultList.add(result);
                                 }
-                            } else {
-                                log.warn("[경고] text가 문자열 형식이 아님: {}", textObj);
+                                processedPolicyIds.add(policy.getPolicyId());
                             }
-                        } else {
-                            log.warn("[경고] content 항목이 예상한 Map 형태가 아님: {}", first);
                         }
-                    } else {
-                        log.warn("[경고] content가 리스트가 아니거나 비어 있음: {}", tagIdObj);
                     }
-                } else {
-                    log.warn("[경고] output이 리스트가 아님: {}", outputObj);
                 }
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                // 429 오류 감지 → 대기 후 재귀 호출
+                String body = e.getResponseBodyAsString();
+                log.warn("[Rate Limit] 응답 본문: {}", body);
+
+                if (retryCount >= MAX_RETRIES) {
+                    log.error("재시도 횟수 초과. 중단합니다.");
+                    break;
+                }
+
+                Pattern p = Pattern.compile("try again in ([0-9.]+)s");
+                Matcher m = p.matcher(body);
+                if (m.find()) {
+                    double waitSeconds = Double.parseDouble(m.group(1));
+                    long waitMillis = (long) (waitSeconds * 1000);
+                    log.info("Rate limit 초과, {}ms 대기 후 재시도", waitMillis);
+                    Thread.sleep(waitMillis);
+                } else {
+                    log.info("기본 대기시간 10초 후 재시도");
+                    Thread.sleep(10_000);
+                }
+
+                return runPrompt(retryCount + 1);
             } catch (Exception e) {
-                log.error("[에러] Prompt 호출 실패 - policyId: {}", policy.getPolicyId(), e);
+                log.error("기타 예외 발생", e);
             }
         }
+        log.info("총 처리한 정책 수: {}개", processedPolicyIds.size());
         return resultList;
     }
+
     public String generatePolicyInputText(YouthPolicyOpenAI policy) {
         StringBuilder builder = new StringBuilder();
 
