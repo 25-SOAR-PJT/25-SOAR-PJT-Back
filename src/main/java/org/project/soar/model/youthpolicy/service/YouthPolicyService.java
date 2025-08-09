@@ -14,6 +14,7 @@ import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
 import org.project.soar.util.DateClassifier;
 import org.project.soar.util.StepExtractor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -677,9 +678,9 @@ public class YouthPolicyService {
     /**
      * 마감임박 지원사업 리스트
      */
-    public Page<YouthPolicy> getLatestPoliciesByEndDate(Pageable pageable) {
+    public Page<YouthPolicy> getLatestPoliciesByEndDate() {
         try {
-            Page<YouthPolicy> policies = youthPolicyRepository.findLatestPoliciesByEndDate(pageable);
+            Page<YouthPolicy> policies = youthPolicyRepository.findLatestPoliciesByEndDate(PageRequest.of(0, 10));
             return policies ;
         } catch (Exception e) {
             log.error("Error getting latest policies by end date", e);
