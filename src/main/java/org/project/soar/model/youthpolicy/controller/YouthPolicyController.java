@@ -158,14 +158,9 @@ public class YouthPolicyController {
 
     // 마감임박 지원사업 리스트
     @GetMapping("/latest")
-    public ResponseEntity<ApiResponse<?>> getLatestPoliciesByEndDate(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<ApiResponse<?>> getLatestPoliciesByEndDate() {
         try {
-
-            Pageable pageable = PageRequest.of(page, size);
-            Page<YouthPolicy> policies = youthPolicyService.getLatestPoliciesByEndDate(pageable);
-
+            Page<YouthPolicy> policies = youthPolicyService.getLatestPoliciesByEndDate();
 
             return ResponseEntity.ok(ApiResponse.createSuccess(policies));
         } catch (Exception e) {

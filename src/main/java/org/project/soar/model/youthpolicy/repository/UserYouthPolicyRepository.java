@@ -36,33 +36,6 @@ public interface UserYouthPolicyRepository extends JpaRepository<UserYouthPolicy
      */
     boolean existsByUserAndPolicy(User user, YouthPolicy policy);
 
-    /**
-     * 실시간 인기 지원사업
-     */
-    @Query("""
-        SELECT p
-        FROM UserYouthPolicy uyp
-        JOIN uyp.policy p
-        GROUP BY p
-        ORDER BY COUNT(uyp) DESC
-    """)
-    List<YouthPolicy> findTop10ByApplicationCount(Pageable pageable);
-
-    /**
-     * 나이대별 실시간 인기 지원사업
-     */
-    @Query(value = """
-        SELECT p.*
-        FROM user_youth_policy uyp
-        JOIN user u ON uyp.user_id = u.user_id
-        JOIN youth_policy p ON uyp.policy_id = p.policy_id
-        WHERE u.user_birth_date IS NOT NULL
-            AND FLOOR(TIMESTAMPDIFF(YEAR, u.user_birth_date, CURDATE()) / 10) * 10 = :ageGroup
-        GROUP BY p.policy_id
-        ORDER BY COUNT(*) DESC
-    """, nativeQuery = true)
-    List<YouthPolicy> findTop10PopularByAgeGroup(@Param("ageGroup") int ageGroup, Pageable pageable);
-
     Integer countByUser(User user); // 카운트만 반환
 }
 

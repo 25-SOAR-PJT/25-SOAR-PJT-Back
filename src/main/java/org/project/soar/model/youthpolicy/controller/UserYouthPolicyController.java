@@ -158,7 +158,7 @@ public class UserYouthPolicyController {
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<?>> getPopularPolicies() {
         try {
-            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPolicies();
+            List<YouthPolicy> popularPolicies = bookmarkService.getPopularPolicies();
             return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
@@ -171,7 +171,7 @@ public class UserYouthPolicyController {
     @GetMapping("/popular/age-group/{userId}")
     public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(@PathVariable Long userId) {
         try {
-            List<YouthPolicy> popularPolicies = userYouthPolicyService.getPopularPoliciesAge(userId);
+            List<YouthPolicy> popularPolicies = bookmarkService.getPopularPoliciesAge(userId);
             return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
