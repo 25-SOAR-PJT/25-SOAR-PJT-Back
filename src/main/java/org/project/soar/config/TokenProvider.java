@@ -6,13 +6,16 @@ import io.jsonwebtoken.*;
 import org.project.soar.model.user.RefreshToken;
 import org.project.soar.model.user.User;
 import org.project.soar.model.user.repository.RefreshTokenRepository;
+import org.project.soar.model.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.spec.SecretKeySpec;
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -30,6 +33,7 @@ public class TokenProvider {
     private final long refreshExpirationHours;
     private final String issuer;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger logger = LoggerFactory.getLogger(TokenProvider.class);
 
@@ -38,36 +42,36 @@ public class TokenProvider {
             @Value("${expiration-minutes}") long expirationMinutes,
             @Value("${refresh-expiration-hours}") long refreshExpirationHours,
             @Value("${issuer}") String issuer,
-            RefreshTokenRepository refreshTokenRepository) {
+            RefreshTokenRepository refreshTokenRepository,
+            UserRepository userRepository) {
         this.secretKey = secretKey;
         this.expirationMinutes = expirationMinutes;
         this.refreshExpirationHours = refreshExpirationHours;
         this.issuer = issuer;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.userRepository = userRepository;
     }
 
     public String createToken(User user) {
         String userSpecification = user.getUserId() + ":" + user.getUserEmail();
         return Jwts.builder()
                 .signWith(new SecretKeySpec(secretKey.getBytes(), SignatureAlgorithm.HS512.getJcaName()))
-                .setSubject(userSpecification) // JWT 토큰 제목에 사용자 ID와 사용자명 포함
-                .claim("role", user.getUserRole().name()) // role 정보
-                .setIssuer(issuer) // JWT 토큰 발급자
-                .setIssuedAt(Timestamp.valueOf(LocalDateTime.now())) // JWT 토큰 발급 시간
-                .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES))) // JWT 토큰 만료 시간
-                .compact(); // JWT 토큰 생성
+                .setSubject(userSpecification) // "userId:userEmail"
+                .claim("role", user.getUserRole().name())
+                .setIssuer(issuer)
+                .setIssuedAt(Timestamp.valueOf(LocalDateTime.now()))
+                .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
+                .compact();
     }
 
     public String createRefreshToken(User user) {
         String subject = user.getUserId() + ":" + user.getUserEmail();
         return Jwts.builder()
-                .signWith(new SecretKeySpec(secretKey.getBytes(),
-                        SignatureAlgorithm.HS512.getJcaName()))
+                .signWith(new SecretKeySpec(secretKey.getBytes(), SignatureAlgorithm.HS512.getJcaName()))
                 .setSubject(subject)
                 .setIssuer(issuer)
                 .setIssuedAt(Timestamp.valueOf(LocalDateTime.now()))
-                .setExpiration(Date.from(
-                        Instant.now().plus(refreshExpirationHours, ChronoUnit.HOURS)))
+                .setExpiration(Date.from(Instant.now().plus(refreshExpirationHours, ChronoUnit.HOURS)))
                 .compact();
     }
 
@@ -104,7 +108,8 @@ public class TokenProvider {
 
     @Transactional(readOnly = true)
     public void validateRefreshToken(String refreshToken, String oldAccessToken) throws JsonProcessingException {
-        logger.debug("[TokenProvider] validateRefreshToken 호출 → refreshToken={}, oldAccessToken={}", refreshToken, oldAccessToken);
+        logger.debug("[TokenProvider] validateRefreshToken 호출 → refreshToken={}, oldAccessToken={}", refreshToken,
+                oldAccessToken);
         validateAndParseToken(refreshToken);
         String userId = decodeJwtPayloadSubject(oldAccessToken).split(":")[0];
         refreshTokenRepository.findById(Long.parseLong(userId))
@@ -148,5 +153,51 @@ public class TokenProvider {
                 .getBody();
     }
 
+    /*
+     * ===========================
+     * 👇 추가된 인증 헬퍼 메서드
+     * ===========================
+     */
 
+    /** Authorization 헤더에서 Bearer 토큰 추출 */
+    public String extractAccessToken(HttpServletRequest request) {
+        String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
+    }
+
+    /** 토큰에서 userId(Long)만 추출 */
+    public Long extractUserIdFromToken(String token) {
+        if (token == null)
+            return null;
+        try {
+            String subject = validateTokenAndGetSubject(token); // "userId:userEmail"
+            String[] parts = subject.split(":");
+            if (parts.length < 1)
+                return null;
+            return Long.parseLong(parts[0]);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 토큰에서 User 엔티티 조회 (없으면 null) */
+    public User getUserFromToken(String token) {
+        Long userId = extractUserIdFromToken(token);
+        if (userId == null)
+            return null;
+        try {
+            return userRepository.findById(userId).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 요청에서 User 엔티티 바로 조회 (없으면 null) */
+    public User getUserFromRequest(HttpServletRequest request) {
+        String token = extractAccessToken(request);
+        return getUserFromToken(token);
+    }
 }

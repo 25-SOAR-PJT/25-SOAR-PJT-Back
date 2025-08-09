@@ -12,7 +12,6 @@ import org.project.soar.model.youthpolicy.dto.YouthPolicyBookmarkResponseDto;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyLatestResponseDto;
 import org.project.soar.model.youthpolicy.service.UserYouthPolicyService;
 import org.project.soar.model.youthpolicy.service.YouthPolicyBookmarkService;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,17 +27,20 @@ public class UserYouthPolicyController {
     private final TokenProvider tokenProvider;
     private final UserRepository userRepository;
 
+    /**
+     * 정책 신청 API
+     */
     @PostMapping("/{policyId}/apply")
     public ResponseEntity<ApiResponse<?>> applyToPolicy(
             @PathVariable String policyId,
             HttpServletRequest request) {
 
-        User user = getUserFromToken(request);
+        User user = tokenProvider.getUserFromRequest(request);
         if (user == null) {
             return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
 
-        var dto = userYouthPolicyService.applyToPolicy(user, policyId);
+        YouthPolicyApplyResponseDto dto = userYouthPolicyService.applyToPolicy(user, policyId);
 
         // 종료/마감/이미 신청 → 에러 처리
         String msg = dto.getMessage() == null ? "" : dto.getMessage();
@@ -47,15 +49,14 @@ public class UserYouthPolicyController {
             return ResponseEntity.badRequest().body(ApiResponse.createError(msg));
         }
 
-        // 여기서부터는 정상 신청 완료.
-        // applyUrl 이 없어도 성공으로 처리 (연중/오프라인/전화 신청 등)
+        // 정상 신청 완료 (applyUrl 없어도 성공으로 처리)
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(
                 dto,
                 (dto.getApplyUrl() == null || dto.getApplyUrl().isBlank())
-                        ? String.format("정책 신청 완료(이동할 URL 없음): policyId=%s, userId=%d", dto.getPolicyId(),
-                                dto.getUserId())
-                        : String.format("정책 신청 완료: policyId=%s, userId=%d, redirectUrl 반환됨", dto.getPolicyId(),
-                                dto.getUserId())));
+                        ? String.format("정책 신청 완료(이동할 URL 없음): policyId=%s, userId=%d",
+                                dto.getPolicyId(), dto.getUserId())
+                        : String.format("정책 신청 완료: policyId=%s, userId=%d, redirectUrl 반환됨",
+                                dto.getPolicyId(), dto.getUserId())));
     }
 
     /**
@@ -66,7 +67,7 @@ public class UserYouthPolicyController {
             HttpServletRequest request,
             @PathVariable String policyId) {
 
-        User user = getUserFromToken(request);
+        User user = tokenProvider.getUserFromRequest(request);
         if (user == null) {
             return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
@@ -75,7 +76,7 @@ public class UserYouthPolicyController {
 
         String message = added
                 ? String.format("북마크 추가됨: policyId=%s, userId=%d", policyId, user.getUserId())
-                : String.format("북마크 제거됨: policyId=%s, userId=%d", policyId, user.getUserId());
+                : String.format("북마크 해제됨: policyId=%s, userId=%d", policyId, user.getUserId());
 
         // 북마크 추가 시에만 DTO 반환
         if (added) {
@@ -83,7 +84,6 @@ public class UserYouthPolicyController {
                     .filter(b -> b.getPolicyId().equals(policyId))
                     .findFirst()
                     .orElse(null);
-
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(dto, message));
         } else {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, message));
@@ -91,11 +91,46 @@ public class UserYouthPolicyController {
     }
 
     /**
+     * 특정 정책 북마크 해제 API (idempotent)
+     */
+    @DeleteMapping("/{policyId}/bookmarks")
+    public ResponseEntity<ApiResponse<?>> unbookmarkPolicy(
+            HttpServletRequest request,
+            @PathVariable String policyId) {
+
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        bookmarkService.unbookmark(user, policyId);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(
+                null,
+                String.format("북마크 해제 완료: policyId=%s, userId=%d", policyId, user.getUserId())));
+    }
+
+    /**
+     * 모든 정책 북마크 해제 API (전체 삭제, idempotent)
+     */
+    @DeleteMapping("/bookmarks")
+    public ResponseEntity<ApiResponse<?>> unbookmarkAllPolicies(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        bookmarkService.unbookmarkAll(user);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(
+                null,
+                String.format("모든 북마크 해제 완료: userId=%d", user.getUserId())));
+    }
+
+    /**
      * 사용자 북마크 리스트 조회 API
      */
     @GetMapping("/bookmarks")
     public ResponseEntity<ApiResponse<?>> getBookmarks(HttpServletRequest request) {
-        User user = getUserFromToken(request);
+        User user = tokenProvider.getUserFromRequest(request);
         if (user == null) {
             return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
@@ -116,7 +151,7 @@ public class UserYouthPolicyController {
             HttpServletRequest request,
             @PathVariable String policyId) {
 
-        User user = getUserFromToken(request);
+        User user = tokenProvider.getUserFromRequest(request);
         if (user == null) {
             return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
@@ -129,7 +164,7 @@ public class UserYouthPolicyController {
     }
 
     /**
-     * 북마크된 지업사업 중 가장 종료일이 가까운 정책 조회 API
+     * 북마크된 지원사업 중 가장 종료일이 가까운 정책 조회 API
      */
     @GetMapping("/bookmarks/latest/{userId}")
     public ResponseEntity<ApiResponse<YouthPolicyLatestResponseDto>> getLatestBookmarkByEndDate(
@@ -144,7 +179,7 @@ public class UserYouthPolicyController {
     }
 
     /**
-     * 인기 정책 조회 API (신청 기준)
+     * 인기 정책 조회 API (북마크 기준)
      */
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<?>> getPopularPolicies() {
@@ -157,7 +192,7 @@ public class UserYouthPolicyController {
     }
 
     /**
-     * 나이대별 인기 정책 조회 API (신청 기준)
+     * 나이대별 인기 정책 조회 API (북마크 기준)
      */
     @GetMapping("/popular/age-group/{userId}")
     public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(@PathVariable Long userId) {
@@ -176,30 +211,5 @@ public class UserYouthPolicyController {
     public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(@PathVariable Long userId) {
         int count = userYouthPolicyService.getAppliedPolicyCount(userId);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
-    }
-
-    private String extractAccessToken(HttpServletRequest request) {
-        String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
-        }
-        return null;
-    }
-
-    private User getUserFromToken(HttpServletRequest request) {
-        String token = extractAccessToken(request);
-        if (token == null)
-            return null;
-
-        try {
-            String subject = tokenProvider.validateTokenAndGetSubject(token);
-            String[] parts = subject.split(":");
-            if (parts.length < 1)
-                return null;
-            Long userId = Long.parseLong(parts[0]);
-            return userRepository.findById(userId).orElse(null);
-        } catch (Exception e) {
-            return null;
-        }
     }
 }
