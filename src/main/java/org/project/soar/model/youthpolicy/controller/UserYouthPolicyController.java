@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,42 +28,34 @@ public class UserYouthPolicyController {
     private final TokenProvider tokenProvider;
     private final UserRepository userRepository;
 
-    /**
-     * 정책 신청 API
-     */
     @PostMapping("/{policyId}/apply")
     public ResponseEntity<ApiResponse<?>> applyToPolicy(
             @PathVariable String policyId,
             HttpServletRequest request) {
 
-        String token = extractAccessToken(request);
-        String subject = tokenProvider.validateTokenAndGetSubject(token);
-        String[] parts = subject.split(":");
-
-        if (parts.length < 1) {
-            return ResponseEntity.badRequest().body(ApiResponse.createError("잘못된 토큰입니다."));
-        }
-
-        Long userId = Long.parseLong(parts[0]);
-        User user = userRepository.findById(userId).orElse(null);
+        User user = getUserFromToken(request);
         if (user == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 정보를 찾을 수 없습니다."));
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
 
-        String url = userYouthPolicyService.applyToPolicy(user, policyId);
-        if (url == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.createError("이미 신청한 정책이거나 종료된 정책입니다."));
+        var dto = userYouthPolicyService.applyToPolicy(user, policyId);
+
+        // 종료/마감/이미 신청 → 에러 처리
+        String msg = dto.getMessage() == null ? "" : dto.getMessage();
+        boolean isError = msg.contains("종료") || msg.contains("마감") || msg.contains("이미 신청");
+        if (isError) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError(msg));
         }
 
-        YouthPolicyApplyResponseDto responseDto = new YouthPolicyApplyResponseDto(
-                url,
-                "정책 신청이 완료되었습니다.",
-                policyId,
-                user.getUserId());
-
+        // 여기서부터는 정상 신청 완료.
+        // applyUrl 이 없어도 성공으로 처리 (연중/오프라인/전화 신청 등)
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(
-                responseDto,
-                String.format("정책 신청 완료: policyId=%s, userId=%d, redirectUrl 반환됨", policyId, user.getUserId())));
+                dto,
+                (dto.getApplyUrl() == null || dto.getApplyUrl().isBlank())
+                        ? String.format("정책 신청 완료(이동할 URL 없음): policyId=%s, userId=%d", dto.getPolicyId(),
+                                dto.getUserId())
+                        : String.format("정책 신청 완료: policyId=%s, userId=%d, redirectUrl 반환됨", dto.getPolicyId(),
+                                dto.getUserId())));
     }
 
     /**
