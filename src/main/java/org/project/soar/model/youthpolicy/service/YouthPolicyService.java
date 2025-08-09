@@ -763,10 +763,15 @@ public class YouthPolicyService {
                         ? p.getApplicationEndDate().toLocalDate()
                         : null;
 
+                String label = (p.getDateLabel() != null && !p.getDateLabel().isBlank())
+                        ? p.getDateLabel()
+                        : "신청 마감";
+
                 summaries.add(CalendarDayResponseDto.PolicySummary.builder()
                         .policyId(p.getPolicyId())
                         .policyName(p.getPolicyName())
                         .deadline(deadline) // LocalDate
+                        .dateLabel(label)
                         .build());
             }
 
@@ -780,16 +785,20 @@ public class YouthPolicyService {
                     } catch (Exception ignored) {
                     }
                 }
+                String label = (p.getDateLabel() != null && !p.getDateLabel().isBlank())
+                        ? p.getDateLabel()
+                        : "사업 마감";
 
                 summaries.add(CalendarDayResponseDto.PolicySummary.builder()
                         .policyId(p.getPolicyId())
                         .policyName(p.getPolicyName())
-                        .deadline(deadline) // LocalDate
+                        .deadline(deadline)
+                        .dateLabel(label)
                         .build());
             }
 
             return CalendarDayResponseDto.builder()
-                    .date(date) // ← String 아님!
+                    .date(date) // LocalDate
                     .applyEndCount(applyEndPolicies.size())
                     .businessEndCount(businessEndPolicies.size())
                     .policies(summaries)

@@ -32,6 +32,7 @@ public class CalendarDayResponseDto {
     public static class PolicySummary {
         private String policyId;
         private String policyName;
-        private LocalDate deadline; // 마감일
+        private LocalDate deadline; 
+        private String dateLabel;
     }
 }
