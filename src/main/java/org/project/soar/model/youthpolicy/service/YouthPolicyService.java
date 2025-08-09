@@ -25,6 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -42,6 +43,7 @@ public class YouthPolicyService {
     private final YouthPolicyStepRepository stepRepository;
     private final CategoryRepository categoryRepository;
 
+    private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
 
 
     @Transactional
@@ -688,4 +690,109 @@ public class YouthPolicyService {
         }
     }
 
-}
+        /**
+         * [캘린더] 월별 일자별 개수(신청 마감/사업 마감)
+         * - 응답: 해당 월에서 "값이 존재하는 날짜"만 List 형태로 반환
+         */
+        public List<CalendarDayResponseDto> getCalendarMonthCounts(int year, int month) {
+            YearMonth ym = YearMonth.of(year, month);
+            LocalDate first = ym.atDay(1);
+            LocalDate last = ym.atEndOfMonth();
+    
+            LocalDateTime startDt = first.atStartOfDay();
+            LocalDateTime endExclusive = last.plusDays(1).atStartOfDay();
+    
+            String startYmd = first.format(YMD);
+            String endYmd = last.format(YMD);
+    
+            // 1) 신청 마감 집계
+            Map<LocalDate, Integer> applyMap = new HashMap<>();
+            for (Object[] row : youthPolicyRepository.countApplyEndByDayInRange(startDt, endExclusive)) {
+                LocalDate d = ((java.sql.Date) row[0]).toLocalDate(); // FUNCTION('DATE', ...) 결과
+                int cnt = ((Number) row[1]).intValue();
+                applyMap.put(d, cnt);
+            }
+    
+            // 2) 사업 마감 집계
+            Map<LocalDate, Integer> bizMap = new HashMap<>();
+            for (Object[] row : youthPolicyRepository.countBusinessEndByDayInRange(startYmd, endYmd)) {
+                String ymd = (String) row[0];
+                int cnt = ((Number) row[1]).intValue();
+                LocalDate d = LocalDate.parse(ymd, YMD);
+                bizMap.put(d, cnt);
+            }
+    
+            // 3) 머지: 해당 월에서 값 있는 날짜만 생성
+            Set<LocalDate> keys = new HashSet<>();
+            keys.addAll(applyMap.keySet());
+            keys.addAll(bizMap.keySet());
+    
+            List<CalendarDayResponseDto> result = new ArrayList<>();
+            for (LocalDate d : keys) {
+                result.add(CalendarDayResponseDto.builder()
+                        .date(d)
+                        .applyEndCount(applyMap.getOrDefault(d, 0))
+                        .businessEndCount(bizMap.getOrDefault(d, 0))
+                        .build());
+            }
+    
+            // 날짜 오름차순 정렬
+            result.sort(Comparator.comparing(CalendarDayResponseDto::getDate));
+            return result;
+        }
+    
+        /**
+         * [캘린더] 특정 일의 개수 + 정책 요약(정책id, 정책명, 마감일)
+         */
+        public CalendarDayResponseDto getPoliciesByDay(LocalDate date) {
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime endExclusive = date.plusDays(1).atStartOfDay();
+
+            // 신청 마감(해당 일)
+            List<YouthPolicy> applyEndPolicies = youthPolicyRepository.findByApplicationEndDateOn(start, endExclusive);
+
+            // 사업 마감(해당 일)
+            String ymd = date.format(YMD);
+            List<YouthPolicy> businessEndPolicies = youthPolicyRepository.findByBusinessPeriodEnd(ymd);
+
+            List<CalendarDayResponseDto.PolicySummary> summaries = new ArrayList<>();
+
+            // 신청 마감 요약
+            for (YouthPolicy p : applyEndPolicies) {
+                LocalDate deadline = p.getApplicationEndDate() != null
+                        ? p.getApplicationEndDate().toLocalDate()
+                        : null;
+
+                summaries.add(CalendarDayResponseDto.PolicySummary.builder()
+                        .policyId(p.getPolicyId())
+                        .policyName(p.getPolicyName())
+                        .deadline(deadline) // LocalDate
+                        .build());
+            }
+
+            // 사업 마감 요약
+            for (YouthPolicy p : businessEndPolicies) {
+                LocalDate deadline = null;
+                String be = p.getBusinessPeriodEnd();
+                if (StringUtils.hasText(be) && be.length() == 8) {
+                    try {
+                        deadline = LocalDate.parse(be, YMD);
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                summaries.add(CalendarDayResponseDto.PolicySummary.builder()
+                        .policyId(p.getPolicyId())
+                        .policyName(p.getPolicyName())
+                        .deadline(deadline) // LocalDate
+                        .build());
+            }
+
+            return CalendarDayResponseDto.builder()
+                    .date(date) // ← String 아님!
+                    .applyEndCount(applyEndPolicies.size())
+                    .businessEndCount(businessEndPolicies.size())
+                    .policies(summaries)
+                    .build();
+        }
+    }

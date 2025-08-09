@@ -250,5 +250,72 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
         ORDER BY p.businessPeriodEnd ASC
     """)
     Page<YouthPolicy> findLatestPoliciesByEndDate(Pageable pageable);
+ 
+    /**
+     * [캘린더] 월 범위 내 신청 마감일 일자별 개수
+     * - MySQL: DATE(applicationEndDate) 로 일 단위 그룹화
+     */
+    @Query("""
+        SELECT FUNCTION('DATE', yp.applicationEndDate) AS d, COUNT(yp)
+        FROM YouthPolicy yp
+        WHERE yp.applicationEndDate IS NOT NULL
+          AND yp.applicationEndDate >= :start
+          AND yp.applicationEndDate < :end
+        GROUP BY FUNCTION('DATE', yp.applicationEndDate)
+        ORDER BY d ASC
+    """)
+    List<Object[]> countApplyEndByDayInRange(@Param("start") LocalDateTime start,
+                                             @Param("end") LocalDateTime end);
+
+    /**
+     * [캘린더] 월 범위 내 사업 마감일(yyyyMMdd) 일자별 개수
+     * - 문자열 범위 비교 + 일자별 그룹화 (그룹 키는 문자열 yyyyMMdd)
+     */
+    @Query("""
+        SELECT yp.businessPeriodEnd AS ymd, COUNT(yp)
+        FROM YouthPolicy yp
+        WHERE yp.businessPeriodEnd IS NOT NULL
+          AND TRIM(yp.businessPeriodEnd) <> ''
+          AND yp.businessPeriodEnd BETWEEN :startYmd AND :endYmd
+        GROUP BY yp.businessPeriodEnd
+        ORDER BY yp.businessPeriodEnd ASC
+    """)
+    List<Object[]> countBusinessEndByDayInRange(@Param("startYmd") String startYmd,
+                                                @Param("endYmd") String endYmd);
+
+    /**
+     * [캘린더] 특정 일의 신청 마감 개수
+     */
+    @Query("""
+        SELECT COUNT(yp)
+        FROM YouthPolicy yp
+        WHERE yp.applicationEndDate IS NOT NULL
+          AND yp.applicationEndDate >= :start
+          AND yp.applicationEndDate < :end
+    """)
+    long countApplyEndOnDay(@Param("start") LocalDateTime start,
+                            @Param("end") LocalDateTime end);
+
+    /**
+     * [캘린더] 특정 일의 사업 마감 개수(yyyyMMdd)
+     */
+    @Query("""
+        SELECT COUNT(yp)
+        FROM YouthPolicy yp
+        WHERE yp.businessPeriodEnd = :ymd
+    """)
+    long countBusinessEndOnDay(@Param("ymd") String ymd);
+
+    // 신청 마감: 해당 일자 구간 조회 ( [start, end) )
+    @Query("select p from YouthPolicy p " +
+                  "where p.applicationEndDate is not null " +
+                  "and p.applicationEndDate >= :start " +
+                  "and p.applicationEndDate < :end")
+    List<YouthPolicy> findByApplicationEndDateOn(@Param("start") LocalDateTime start,
+                  @Param("end") LocalDateTime end);
+
+    // 사업 마감: yyyyMMdd 정확히 일치
+    List<YouthPolicy> findByBusinessPeriodEnd(String ymd);
+
 }
 

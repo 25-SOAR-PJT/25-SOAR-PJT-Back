@@ -7,12 +7,14 @@ import org.project.soar.global.api.ApiResponse;
 import org.project.soar.global.scheduler.YouthPolicyScheduler;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicyStep;
+import org.project.soar.model.youthpolicy.dto.CalendarDayResponseDto;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
 import org.project.soar.model.youthpolicy.service.YouthPolicyService;
 import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -166,7 +168,43 @@ public class YouthPolicyController {
         } catch (Exception e) {
             log.error("마감임박 지원사업 조회 실패", e);
             return ResponseEntity.internalServerError().body(ApiResponse.createError("마감임박 지원사업 조회 실패: " + e.getMessage()));
+        } 
+    } 
+    /**
+     * [캘린더] 월별 일자별 개수(신청 마감/사업 마감)
+     * 예) /api/youth-policy/calendar/month?year=2025&month=5
+     */
+    @GetMapping("/calendar/month")
+    public ResponseEntity<ApiResponse<?>> getCalendarMonthCounts(
+            @RequestParam int year,
+            @RequestParam int month) {
+        try {
+            if (month < 1 || month > 12) {
+                return ResponseEntity.badRequest().body(ApiResponse.createError("month는 1~12 범위여야 합니다."));
+            }
+            List<CalendarDayResponseDto> result = youthPolicyService.getCalendarMonthCounts(year, month);
+            return ResponseEntity.ok(ApiResponse.createSuccess(result));
+        } catch (Exception e) {
+            log.error("월별 캘린더 카운트 조회 실패", e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("월별 캘린더 카운트 조회 실패: " + e.getMessage()));
         }
     }
+
+    /**
+     * [캘린더] 일별 개수(신청 마감/사업 마감)
+     * 예) /api/youth-policy/calendar/day?date=2025-05-15
+     */
+    @GetMapping("/calendar/day")
+    public ResponseEntity<ApiResponse<?>> getCalendarDayCounts(@RequestParam String date) {
+        try {
+            LocalDate target = LocalDate.parse(date); // ISO yyyy-MM-dd
+            CalendarDayResponseDto result = youthPolicyService.getPoliciesByDay(target);
+            return ResponseEntity.ok(ApiResponse.createSuccess(result));
+        } catch (Exception e) {
+            log.error("일별 캘린더 카운트 조회 실패: {}", date, e);
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("일별 캘린더 카운트 조회 실패: " + e.getMessage()));
+        }
+    }
+    
 
 }

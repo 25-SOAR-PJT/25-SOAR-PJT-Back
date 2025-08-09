@@ -2,6 +2,8 @@ package org.project.soar.model.youthpolicy;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -148,6 +150,11 @@ public class YouthPolicy {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public LocalDate getBusinessEndDate() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getBusinessEndDate'");
     }
 
 }
