@@ -14,6 +14,7 @@ import org.project.soar.model.youthpolicy.repository.YouthPolicyStepRepository;
 import org.project.soar.util.DateClassifier;
 import org.project.soar.util.StepExtractor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,9 +23,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -42,6 +45,7 @@ public class YouthPolicyService {
     private final YouthPolicyStepRepository stepRepository;
     private final CategoryRepository categoryRepository;
 
+    private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
 
 
     @Transactional
@@ -152,27 +156,180 @@ public class YouthPolicyService {
         }
     }
 
-    /**
-     * 키워드로 청년정책 검색 (Controller에서 사용)
-     */
-    public List<YouthPolicy> searchPolicies(String keyword) {
-        return youthPolicyRepository.searchByKeyword(keyword);
+    private String normalize(String q) {
+        if (q == null) return "";
+        return q.trim().replaceAll("\\s+", " ");
+    }
+
+    private List<String> tokenize(String q) {
+        String n = normalize(q);
+        if (n.isEmpty()) return List.of();
+        return Arrays.stream(n.split(" "))
+                .filter(t -> t.length() >= 1)
+                .limit(10)
+                .toList();
+    }
+
+    // 정책명 전용 검색 DTO 페이지
+    public Page<YouthPolicySearchItemDto> searchByPolicyNamePagedDto(String keyword, Pageable pageable) {
+        Page<YouthPolicy> page = searchByPolicyNamePaged(keyword, pageable);
+        return new PageImpl<>(
+                page.getContent().stream().map(YouthPolicySearchItemDto::from).toList(),
+                pageable,
+                page.getTotalElements());
+    }
+
+    // 전체 컬럼 검색 DTO 페이지
+    public Page<YouthPolicySearchItemDto> searchEverywherePagedDto(String keyword, Pageable pageable) {
+        Page<YouthPolicy> page = searchEverywherePaged(keyword, pageable);
+        return new PageImpl<>(
+                page.getContent().stream().map(YouthPolicySearchItemDto::from).toList(),
+                pageable,
+                page.getTotalElements());
     }
 
     /**
-     * 키워드로 청년정책 검색 (Controller에서 사용) - 이름
+     * 정책명 전용 검색 (다중 키워드 AND, policyName LIKE %token%)
+     * - 정확도 정렬: exact > startsWith > contains > createdAt desc
      */
-    public List<YouthPolicy> searchByKeyword(String keyword) {
-        try {
-            if (!StringUtils.hasText(keyword)) {
-                return getAllYouthPolicies();
+    public Page<YouthPolicy> searchByPolicyNamePaged(String keyword, Pageable pageable) {
+        List<String> tokens = tokenize(keyword);
+        if (tokens.isEmpty()) return Page.empty(pageable);
+
+        var spec = (org.springframework.data.jpa.domain.Specification<YouthPolicy>) (root, cq, cb) -> {
+            var lowerName = cb.lower(root.get("policyName"));
+            List<jakarta.persistence.criteria.Predicate> ands = new ArrayList<>();
+            for (String t : tokens) {
+                ands.add(cb.like(lowerName, "%" + t.toLowerCase() + "%"));
             }
-            return youthPolicyRepository.findByPolicyNameContaining(keyword);
-        } catch (Exception e) {
-            log.error("Error searching youth policies by keyword: {}", keyword, e);
-            throw new RuntimeException("청년정책 키워드 검색 중 오류가 발생했습니다.", e);
-        }
+            return cb.and(ands.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<YouthPolicy> page = youthPolicyRepository.findAll(spec, pageable);
+
+        String qn = normalize(keyword).toLowerCase();
+        List<YouthPolicy> sorted = page.getContent().stream()
+                .sorted((a, b) -> {
+                    String an = a.getPolicyName() == null ? "" : a.getPolicyName().toLowerCase();
+                    String bn = b.getPolicyName() == null ? "" : b.getPolicyName().toLowerCase();
+
+                    int aw = relevanceForName(an, qn);
+                    int bw = relevanceForName(bn, qn);
+                    if (aw != bw) return Integer.compare(bw, aw);
+
+                    var ad = a.getCreatedAt();
+                    var bd = b.getCreatedAt();
+                    if (ad != null && bd != null) return bd.compareTo(ad);
+                    if (ad != null) return -1;
+                    if (bd != null) return 1;
+                    return 0;
+                })
+                .toList();
+
+        return new PageImpl<>(sorted, pageable, page.getTotalElements());
     }
+
+    private int relevanceForName(String name, String q) {
+        if (name.equals(q)) return 100;    // exact
+        if (name.startsWith(q)) return 80; // startsWith
+        if (name.contains(q)) return 60;   // contains
+        int bonus = 0;
+        for (String t : tokenize(q)) {
+            if (name.contains(t)) bonus += 2;
+        }
+        return 40 + Math.min(10, bonus);
+    }
+
+    /**
+     * 전체 컬럼 검색 (다중 키워드 AND, 각 토큰은 여러 컬럼 OR)
+     * - 주의: policyId는 String이므로 숫자형 전환/비교 없음 (검색 단계에선 연도 필터 배제)
+     */
+    public Page<YouthPolicy> searchEverywherePaged(String keyword, Pageable pageable) {
+        List<String> tokens = tokenize(keyword);
+        if (tokens.isEmpty()) return Page.empty(pageable);
+
+        var spec = (org.springframework.data.jpa.domain.Specification<YouthPolicy>) (root, cq, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> ands = new ArrayList<>();
+
+            var cols = List.of(
+                    root.get("policyName"),
+                    root.get("policyKeyword"),
+                    root.get("policyExplanation"),
+                    root.get("policySupportContent"),
+                    root.get("applyMethodContent"),
+                    root.get("screeningMethodContent"),
+                    root.get("submitDocumentContent"),
+                    root.get("etcMatterContent"),
+                    root.get("businessPeriodEtc"),
+                    root.get("largeClassification"),
+                    root.get("mediumClassification"),
+                    root.get("supervisingInstName"),
+                    root.get("operatingInstName"),
+                    root.get("applyUrl"),
+                    root.get("referenceUrl1"),
+                    root.get("referenceUrl2"),
+                    root.get("zipCode"),
+                    root.get("policyMajorCode"),
+                    root.get("jobCode"),
+                    root.get("schoolCode"),
+                    root.get("dateType"),
+                    root.get("dateLabel")
+            );
+
+            for (String t : tokens) {
+                String like = "%" + t.toLowerCase() + "%";
+                List<jakarta.persistence.criteria.Predicate> ors = new ArrayList<>();
+                for (var col : cols) {
+                    ors.add(cb.like(cb.lower(col.as(String.class)), like));
+                }
+                ands.add(cb.or(ors.toArray(new jakarta.persistence.criteria.Predicate[0])));
+            }
+
+            // (중요) policyId는 String → 숫자 비교/연도 파싱 시도하지 않음. 저장 단계에서 연도 필터링 완료 가정.
+            return cb.and(ands.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<YouthPolicy> page = youthPolicyRepository.findAll(spec, pageable);
+
+        String qn = normalize(keyword).toLowerCase();
+        List<YouthPolicy> sorted = page.getContent().stream()
+                .sorted((a, b) -> {
+                    String an = a.getPolicyName() == null ? "" : a.getPolicyName().toLowerCase();
+                    String bn = b.getPolicyName() == null ? "" : b.getPolicyName().toLowerCase();
+                    int aw = relevanceForName(an, qn);
+                    int bw = relevanceForName(bn, qn);
+                    if (aw != bw) return Integer.compare(bw, aw);
+
+                    Integer ai = a.getInquiryCount() == null ? 0 : a.getInquiryCount();
+                    Integer bi = b.getInquiryCount() == null ? 0 : b.getInquiryCount();
+                    if (!ai.equals(bi)) return Integer.compare(bi, ai);
+
+                    var ad = a.getCreatedAt();
+                    var bd = b.getCreatedAt();
+                    if (ad != null && bd != null) return bd.compareTo(ad);
+                    if (ad != null) return -1;
+                    if (bd != null) return 1;
+                    return 0;
+                })
+                .toList();
+
+        return new PageImpl<>(sorted, pageable, page.getTotalElements());
+    }
+
+    /** 기존 공개 메서드: 새 로직으로 위임 (호환 유지) */
+    public List<YouthPolicy> searchPolicies(String keyword) {
+        Page<YouthPolicy> p = searchEverywherePaged(keyword, PageRequest.of(0, 50));
+        return p.getContent();
+    }
+
+    public List<YouthPolicy> searchByKeyword(String keyword) {
+        if (!org.springframework.util.StringUtils.hasText(keyword)) {
+            return getAllYouthPolicies();
+        }
+        Page<YouthPolicy> p = searchByPolicyNamePaged(keyword, PageRequest.of(0, 50));
+        return p.getContent();
+    }
+
 
     /**
      * 카테고리별 청년정책 조회 (Controller에서 사용)
@@ -364,9 +521,12 @@ public class YouthPolicyService {
                 applyStart,
                 applyEnd,
                 bizEnd,
+                data.getPlcySprtCn(),
                 data.getPlcyAplyMthdCn(),
                 data.getSrngMthdCn(),
-                data.getBizPrdEtcCn() 
+                data.getBizPrdEtcCn(),
+                data.getPlcyNm(), 
+                LocalDate.now() 
         );
 
         return YouthPolicy.builder()
@@ -605,18 +765,36 @@ public class YouthPolicyService {
 
     /**
      * 청년정책 API 데이터 저장 (서울/경기 필터링 + 중복 처리)
-     */
+     */ 
     public int saveYouthPolicyFromApi(List<YouthPolicyApiData> apiDataList) {
-        // 1. 서울/경기 필터링
+        int currentYear = LocalDate.now().getYear();
+
+        // 1. 서울/경기 필터링 + 과거 연도 필터링
         List<YouthPolicyApiData> filteredList = apiDataList.stream()
                 .filter(data -> {
-                    String region = data.getRgtrUpInstCdNm(); 
+                    String region = data.getRgtrUpInstCdNm();
                     return region != null && (region.contains("서울") || region.contains("경기"));
+                })
+                .filter(data -> {
+                    String policyId = data.getPlcyNo();
+                    if (policyId != null && policyId.length() >= 4) {
+                        try {
+                            int yearFromPolicyId = Integer.parseInt(policyId.substring(0, 4));
+                            if (yearFromPolicyId < currentYear) {
+                                log.info("과거 연도 정책 제외됨 (policyId={}): {}", policyId, data.getPlcyNm());
+                                return false;
+                            }
+                        } catch (NumberFormatException e) {
+                            log.warn("정책 ID에서 연도 파싱 실패 (policyId={})", policyId);
+                            return false;
+                        }
+                    }
+                    return true;
                 })
                 .collect(Collectors.toList());
 
         log.info("원본 정책 개수: {}", apiDataList.size());
-        log.info("서울/경기 정책 개수: {}", filteredList.size());
+        log.info("서울/경기 + 연도 필터링 후 정책 개수: {}", filteredList.size());
 
         // 2. 정책 엔티티 변환
         List<YouthPolicy> entityList = filteredList.stream()
@@ -667,4 +845,118 @@ public class YouthPolicyService {
         }
     }
 
-}
+        /**
+         * [캘린더] 월별 일자별 개수(신청 마감/사업 마감)
+         * - 응답: 해당 월에서 "값이 존재하는 날짜"만 List 형태로 반환
+         */
+        public List<CalendarDayResponseDto> getCalendarMonthCounts(int year, int month) {
+            YearMonth ym = YearMonth.of(year, month);
+            LocalDate first = ym.atDay(1);
+            LocalDate last = ym.atEndOfMonth();
+    
+            LocalDateTime startDt = first.atStartOfDay();
+            LocalDateTime endExclusive = last.plusDays(1).atStartOfDay();
+    
+            String startYmd = first.format(YMD);
+            String endYmd = last.format(YMD);
+    
+            // 1) 신청 마감 집계
+            Map<LocalDate, Integer> applyMap = new HashMap<>();
+            for (Object[] row : youthPolicyRepository.countApplyEndByDayInRange(startDt, endExclusive)) {
+                LocalDate d = ((java.sql.Date) row[0]).toLocalDate(); // FUNCTION('DATE', ...) 결과
+                int cnt = ((Number) row[1]).intValue();
+                applyMap.put(d, cnt);
+            }
+    
+            // 2) 사업 마감 집계
+            Map<LocalDate, Integer> bizMap = new HashMap<>();
+            for (Object[] row : youthPolicyRepository.countBusinessEndByDayInRange(startYmd, endYmd)) {
+                String ymd = (String) row[0];
+                int cnt = ((Number) row[1]).intValue();
+                LocalDate d = LocalDate.parse(ymd, YMD);
+                bizMap.put(d, cnt);
+            }
+    
+            // 3) 머지: 해당 월에서 값 있는 날짜만 생성
+            Set<LocalDate> keys = new HashSet<>();
+            keys.addAll(applyMap.keySet());
+            keys.addAll(bizMap.keySet());
+    
+            List<CalendarDayResponseDto> result = new ArrayList<>();
+            for (LocalDate d : keys) {
+                result.add(CalendarDayResponseDto.builder()
+                        .date(d)
+                        .applyEndCount(applyMap.getOrDefault(d, 0))
+                        .businessEndCount(bizMap.getOrDefault(d, 0))
+                        .build());
+            }
+    
+            // 날짜 오름차순 정렬
+            result.sort(Comparator.comparing(CalendarDayResponseDto::getDate));
+            return result;
+        }
+    
+        /**
+         * [캘린더] 특정 일의 개수 + 정책 요약(정책id, 정책명, 마감일)
+         */
+        public CalendarDayResponseDto getPoliciesByDay(LocalDate date) {
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime endExclusive = date.plusDays(1).atStartOfDay();
+
+            // 신청 마감(해당 일)
+            List<YouthPolicy> applyEndPolicies = youthPolicyRepository.findByApplicationEndDateOn(start, endExclusive);
+
+            // 사업 마감(해당 일)
+            String ymd = date.format(YMD);
+            List<YouthPolicy> businessEndPolicies = youthPolicyRepository.findByBusinessPeriodEnd(ymd);
+
+            List<CalendarDayResponseDto.PolicySummary> summaries = new ArrayList<>();
+
+            // 신청 마감 요약
+            for (YouthPolicy p : applyEndPolicies) {
+                LocalDate deadline = p.getApplicationEndDate() != null
+                        ? p.getApplicationEndDate().toLocalDate()
+                        : null;
+
+                String label = (p.getDateLabel() != null && !p.getDateLabel().isBlank())
+                        ? p.getDateLabel()
+                        : "신청 마감";
+
+                summaries.add(CalendarDayResponseDto.PolicySummary.builder()
+                        .policyId(p.getPolicyId())
+                        .policyName(p.getPolicyName())
+                        .deadline(deadline) // LocalDate
+                        .dateLabel(label)
+                        .build());
+            }
+
+            // 사업 마감 요약
+            for (YouthPolicy p : businessEndPolicies) {
+                LocalDate deadline = null;
+                String be = p.getBusinessPeriodEnd();
+                if (StringUtils.hasText(be) && be.length() == 8) {
+                    try {
+                        deadline = LocalDate.parse(be, YMD);
+                    } catch (Exception ignored) {
+                    }
+                }
+                String label = (p.getDateLabel() != null && !p.getDateLabel().isBlank())
+                        ? p.getDateLabel()
+                        : "사업 마감";
+
+                summaries.add(CalendarDayResponseDto.PolicySummary.builder()
+                        .policyId(p.getPolicyId())
+                        .policyName(p.getPolicyName())
+                        .deadline(deadline)
+                        .dateLabel(label)
+                        .build());
+            }
+
+            return CalendarDayResponseDto.builder()
+                    .date(date) // LocalDate
+                    .applyEndCount(applyEndPolicies.size())
+                    .businessEndCount(businessEndPolicies.size())
+                    .policies(summaries)
+                    .build();
+        }
+    }

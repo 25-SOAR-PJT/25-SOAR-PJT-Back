@@ -23,14 +23,14 @@ public class YouthPolicyScheduler {
      */
     @Scheduled(cron = "0 0 2 * * *")
     public void syncYouthPolicyDataDaily() {
-        log.info("=== 일일 청년정책 데이터 동기화 시작 - {} ===",
+        log.info("=== 새벽 2시 일일 청년정책 데이터 동기화 시작 - {} ===",
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
         try {
             int syncedCount = youthPolicyService.syncAllYouthPolicies();
-            log.info("=== 일일 청년정책 데이터 동기화 완료 - 총 {}개 정책 동기화 ===", syncedCount);
+            log.info("=== 새벽 2시 일일 청년정책 데이터 동기화 완료 - 총 {}개 정책 동기화 ===", syncedCount);
         } catch (Exception e) {
-            log.error("=== 일일 청년정책 데이터 동기화 실패 ===", e);
+            log.error("=== 새벽 2시 일일 청년정책 데이터 동기화 실패 ===", e);
         }
     }
 

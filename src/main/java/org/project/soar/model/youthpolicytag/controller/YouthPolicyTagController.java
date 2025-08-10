@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.tag.dto.YouthPolicyTagsResponse;
 import org.project.soar.model.youthpolicytag.dto.FindYouthPolicyByTagResponse;
+import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagRequest;
 import org.project.soar.model.youthpolicytag.dto.YouthPolicyTagResponse;
 import org.project.soar.model.youthpolicytag.service.YouthPolicyTagService;
 import org.springframework.http.ResponseEntity;

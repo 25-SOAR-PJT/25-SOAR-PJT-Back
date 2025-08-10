@@ -2,6 +2,8 @@ package org.project.soar.model.youthpolicy;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
