@@ -1,9 +1,9 @@
 package org.project.soar.model.youthpolicy.repository;
-import org.project.soar.model.user.User;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String> {
+public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String>, JpaSpecificationExecutor<YouthPolicy> {
 
     /**
      * 정책명으로 검색 (키워드 검색용)
@@ -26,6 +26,8 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
                   "LOWER(y.submitDocumentContent) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
                   "LOWER(y.additionalApplyQualification) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<YouthPolicy> searchByKeyword(@Param("keyword") String keyword);
+
+    Page<YouthPolicy> findAll(Pageable pageable);
 
     /**
      * 정책아이디로 검색

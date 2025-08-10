@@ -152,9 +152,4 @@ public class YouthPolicy {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public LocalDate getBusinessEndDate() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getBusinessEndDate'");
-    }
-
 }

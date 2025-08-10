@@ -27,16 +27,20 @@ public class YouthPolicyBookmarkService {
     private final UserRepository userRepository;
 
     /**
-     * 북마크 토글 (있으면 삭제=해제, 없으면 추가)
+     * 북마크 토글 (있으면 해제, 없으면 추가)
+     * - 정상 처리: true(추가됨) / false(해제됨)
+     * - 정책 없음: null (컨트롤러에서 400 등으로 매핑)
      */
-    public boolean toggleBookmark(User user, String policyId) {
-        YouthPolicy policy = youthPolicyRepository.findById(policyId)
-                .orElseThrow(() -> new IllegalArgumentException("정책을 찾을 수 없습니다."));
+    public Boolean toggleBookmark(User user, String policyId) {
+        YouthPolicy policy = youthPolicyRepository.findById(policyId).orElse(null);
+        if (policy == null) {
+            return null; // 정책 없음 → 컨트롤러에서 에러 응답으로 변환
+        }
 
         return bookmarkRepository.findByUserAndPolicy(user, policy)
                 .map(existing -> {
                     bookmarkRepository.delete(existing); // 해제
-                    return false; // 북마크 취소됨
+                    return Boolean.FALSE; // 북마크 취소됨
                 })
                 .orElseGet(() -> {
                     YouthPolicyBookmark newBookmark = YouthPolicyBookmark.builder()
@@ -44,16 +48,19 @@ public class YouthPolicyBookmarkService {
                             .policy(policy)
                             .build();
                     bookmarkRepository.save(newBookmark); // 추가
-                    return true; // 북마크 추가됨
+                    return Boolean.TRUE; // 북마크 추가됨
                 });
     }
 
     /**
      * 특정 정책 북마크 해제 (idempotent)
+     * - 정책 코드가 잘못되어도 조용히 종료(no-op)
      */
     public void unbookmark(User user, String policyId) {
-        YouthPolicy policy = youthPolicyRepository.findById(policyId)
-                .orElseThrow(() -> new IllegalArgumentException("정책을 찾을 수 없습니다."));
+        YouthPolicy policy = youthPolicyRepository.findById(policyId).orElse(null);
+        if (policy == null) {
+            return; // 정책 없음 → 아무 것도 하지 않음
+        }
         bookmarkRepository.findByUserAndPolicy(user, policy)
                 .ifPresent(bookmarkRepository::delete);
     }
@@ -80,10 +87,14 @@ public class YouthPolicyBookmarkService {
 
     /**
      * 북마크 여부
+     * - true/false: 정책 존재
+     * - null: 정책 없음 (컨트롤러에서 에러 응답으로 변환)
      */
-    public boolean isBookmarked(User user, String policyId) {
-        YouthPolicy policy = youthPolicyRepository.findById(policyId)
-                .orElseThrow(() -> new IllegalArgumentException("정책을 찾을 수 없습니다."));
+    public Boolean isBookmarked(User user, String policyId) {
+        YouthPolicy policy = youthPolicyRepository.findById(policyId).orElse(null);
+        if (policy == null) {
+            return null; // 정책 없음
+        }
         return bookmarkRepository.findByUserAndPolicy(user, policy).isPresent();
     }
 
@@ -103,17 +114,13 @@ public class YouthPolicyBookmarkService {
      */
     public List<YouthPolicy> getPopularPoliciesAge(Long userId) {
         try {
-            User user = userRepository.findByUserId(userId)
+            var user = userRepository.findByUserId(userId)
                     .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-            // 실제 나이 계산
             int age = LocalDate.now().getYear() - user.getUserBirthDate().getYear();
             if (LocalDate.now().getDayOfYear() < user.getUserBirthDate().getDayOfYear()) {
                 age--;
             }
-            // 10대/20대/30대... 나이대 계산
             int ageGroup = (age / 10) * 10;
-
-            // 나이대에 맞는 정책 Top 5 조회
             return bookmarkRepository.findPopularBookmarksByAgeGroup(ageGroup, PageRequest.of(0, 5));
         } catch (Exception e) {
             throw new RuntimeException("실시간 인기 지원사업 조회 중 오류가 발생했습니다.", e);
@@ -124,7 +131,7 @@ public class YouthPolicyBookmarkService {
      * 북마크 중 종료일이 가장 가까운 정책 1건
      */
     public YouthPolicyLatestResponseDto getLatestBookmarkByEndDate(Long userId) {
-        User user = userRepository.findByUserId(userId)
+        var user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         List<YouthPolicy> result = bookmarkRepository.findLatestBookmarkByEndDate(user);
@@ -140,17 +147,15 @@ public class YouthPolicyBookmarkService {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
                 LocalDate today = LocalDate.now();
                 LocalDate endDate = LocalDate.parse(endDateStr, formatter);
-
                 long daysBetween = ChronoUnit.DAYS.between(today, endDate);
 
-                if (daysBetween > 0) {
+                if (daysBetween > 0)
                     dDayStr = "D-" + daysBetween;
-                } else if (daysBetween == 0) {
+                else if (daysBetween == 0)
                     dDayStr = "D-Day";
-                } else {
+                else
                     dDayStr = "마감";
-                }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
                 dDayStr = null; // 형식 불일치 시 표시 안 함
             }
         }
@@ -161,5 +166,4 @@ public class YouthPolicyBookmarkService {
                 .dDay(dDayStr)
                 .build();
     }
-
 }
