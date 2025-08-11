@@ -6,6 +6,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 정책의 날짜/텍스트 정보를 기반으로 상태를 분류한다.
+ * 우선순위:
+ * 1) applyStart > today → UPCOMING (오픈 예정)
+ * 2) applyEnd < today → FINISHED(신청 마감)
+ * 3) businessPeriodEnd 기준으로 DEADLINE/FINISHED
+ * 4) 텍스트 기반 키워드(오픈예정/종료)는 보조 판정
+ * 5) 기본값은 ONGOING
+ */
 public class DateClassifier {
 
     public static DateResult classify(
@@ -22,12 +31,15 @@ public class DateClassifier {
         if (currentDate == null)
             currentDate = LocalDate.now();
 
-        // 1. 정책명에 과거 연도 포함
-        if (containsPastYearInText(policyName, currentDate)) {
-            return new DateResult("FINISHED", "사업 종료");
+        // 1) 오픈 예정: 접수 시작일이 오늘보다 미래이면 무조건 UPCOMING
+        if (applyStart != null) {
+            long daysUntilStart = ChronoUnit.DAYS.between(currentDate, applyStart);
+            if (daysUntilStart > 0) {
+                return new DateResult("UPCOMING", "오픈 예정 D-" + daysUntilStart);
+            }
         }
 
-        // 2. 신청 마감일 판단 (우선순위 상향)
+        // 2) 신청 마감: 접수 종료일이 오늘보다 과거면 FINISHED(신청 마감)
         if (applyEnd != null) {
             long daysLeftApply = ChronoUnit.DAYS.between(currentDate, applyEnd);
             if (daysLeftApply < 0) {
@@ -37,7 +49,7 @@ public class DateClassifier {
             }
         }
 
-        // 3. 사업 마감일 판단 (항상 D-n 출력)
+        // 3) 사업 마감: businessPeriodEnd 기준 DEADLINE/FINISHED
         LocalDate bizEnd = parseDate(businessPeriodEnd);
         if (bizEnd != null) {
             long daysLeftBiz = ChronoUnit.DAYS.between(currentDate, bizEnd);
@@ -48,28 +60,34 @@ public class DateClassifier {
             }
         }
 
-        // 4. 텍스트 기반 과거 정보 포함 시 종료 처리
-        if (containsPastYearInText(businessPeriodEtc, currentDate)
+        // 4) 텍스트 기반 오픈 예정 키워드(보조 판단)
+        if (containsUpcomingKeyword(policyName)
+                || containsUpcomingKeyword(applyMethodContent)
+                || containsUpcomingKeyword(policySupportContent)
+                || containsUpcomingKeyword(businessPeriodEtc)
+                || containsUpcomingKeyword(screeningMethodContent)) {
+            return new DateResult("UPCOMING", "오픈 예정");
+        }
+
+        // 5) 텍스트 기반 과거 정보 또는 종료 키워드 포함 시 종료 처리(보조 판단)
+        if (containsPastYearInText(policyName, currentDate)
+                || containsPastYearInText(businessPeriodEtc, currentDate)
                 || containsPastYearInText(policySupportContent, currentDate)
                 || containsEndKeyword(businessPeriodEtc)
                 || containsEndKeyword(policySupportContent)
-                || containsPastDate(policySupportContent, currentDate)) {
+                || containsPastDate(policySupportContent, currentDate)
+                || containsPastDate(screeningMethodContent, currentDate)
+                || containsEndKeyword(screeningMethodContent)) {
             return new DateResult("FINISHED", "사업 종료");
         }
 
-        // 5. 심사 방식 설명에 과거 날짜 or 종료 키워드 포함
-        if (containsPastDate(screeningMethodContent, currentDate) ||
-                containsEndKeyword(screeningMethodContent)) {
-            return new DateResult("FINISHED", "사업 종료");
-        }
-
-        // 6. 신청 방식 설명에 선착순 / 예산 소진 키워드 포함
-        if (applyMethodContent != null &&
-                (applyMethodContent.contains("예산 소진") || applyMethodContent.contains("선착순"))) {
+        // 6) 신청 방식 설명에 선착순 또는 예산 소진 키워드가 있으면 진행중
+        if (applyMethodContent != null
+                && (applyMethodContent.contains("예산 소진") || applyMethodContent.contains("선착순"))) {
             return new DateResult("ONGOING", "선착순 모집");
         }
 
-        // 7. 기본값
+        // 7) 기본값은 진행중
         return new DateResult("ONGOING", "모집공고 확인");
     }
 
@@ -118,6 +136,23 @@ public class DateClassifier {
                 || content.contains("종료") || content.contains("발표 완료");
     }
 
+    /**
+     * 오픈 예정 키워드 감지 (보조 판단용)
+     */
+    private static boolean containsUpcomingKeyword(String content) {
+        if (content == null || content.isBlank())
+            return false;
+        return content.contains("오픈 예정")
+                || content.contains("공고 예정")
+                || content.contains("모집 예정")
+                || content.contains("접수 예정")
+                || content.contains("사전 접수")
+                || content.contains("사전예약")
+                || content.contains("사전 신청")
+                || content.contains("준비중")
+                || content.contains("예정");
+    }
+
     private static boolean containsPastDate(String content, LocalDate currentDate) {
         if (content == null || content.isBlank())
             return false;
@@ -131,7 +166,8 @@ public class DateClassifier {
                 String month = matcher.group(2);
                 String day = matcher.group(3) != null ? matcher.group(3) : "01";
 
-                String normalized = String.format("%s%02d%02d", year, Integer.parseInt(month), Integer.parseInt(day));
+                String normalized = String.format("%s%02d%02d",
+                        year, Integer.parseInt(month), Integer.parseInt(day));
                 LocalDate foundDate = parseDate(normalized);
                 if (foundDate != null && foundDate.isBefore(currentDate)) {
                     return true;

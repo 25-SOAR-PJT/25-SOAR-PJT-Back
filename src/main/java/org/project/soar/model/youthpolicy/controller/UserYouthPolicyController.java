@@ -9,6 +9,8 @@ import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyBookmarkResponseDto;
+import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyRequestDto;
+import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyResponseDto;
 import org.project.soar.model.youthpolicy.dto.YouthPolicyLatestResponseDto;
 import org.project.soar.model.youthpolicy.service.UserYouthPolicyService;
 import org.project.soar.model.youthpolicy.service.YouthPolicyBookmarkService;
@@ -203,5 +205,42 @@ public class UserYouthPolicyController {
             @Parameter(description = "사용자 ID") @PathVariable Long userId) {
         int count = userYouthPolicyService.getAppliedPolicyCount(userId);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
+    }
+
+    @PostMapping("/apply/bulk")
+    @Operation(summary = "여러 정책 동시 신청(배치)", description = """
+            로그인한 사용자가 전달한 policyIds 목록을 일괄 신청합니다.
+
+            - 신청 URL은 반환하지 않습니다.
+            - 각 정책별 처리 결과(APPLIED, ALREADY_APPLIED, APPLY_ENDED, BUSINESS_ENDED, OPEN_UPCOMING, NOT_FOUND)와
+            전체 합계를 포함한 요약 카운트를 반환합니다.
+            - applicationStartDate가 현재보다 미래인 경우 해당 정책은 OPEN_UPCOMING(오픈 예정)으로 처리합니다.
+            - 존재하지 않는 정책은 NOT_FOUND로 처리하며, 예외를 던지지 않고 항목별 결과에 반영됩니다.
+            """)
+    public ResponseEntity<ApiResponse<?>> applyToPoliciesBulk(
+            HttpServletRequest request,
+            @RequestBody YouthPolicyBulkApplyRequestDto bulkRequest) {
+
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+        if (bulkRequest == null || bulkRequest.getPolicyIds() == null || bulkRequest.getPolicyIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("policyIds가 비어 있습니다."));
+        }
+
+        YouthPolicyBulkApplyResponseDto resp = userYouthPolicyService.applyToPolicies(user, bulkRequest.getPolicyIds());
+
+        String msg = String.format(
+                "총 %d건 요청 중 신청 %d건, 이미 신청 %d건, 신청 마감 %d건, 사업 종료 %d건, 오픈 예정 %d건, 미존재 %d건",
+                resp.getRequestedCount(),
+                resp.getAppliedCount(),
+                resp.getAlreadyAppliedCount(),
+                resp.getApplyEndedCount(),
+                resp.getBusinessEndedCount(),
+                resp.getOpenUpcomingCount(),
+                resp.getNotFoundCount());
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(resp, msg));
     }
 }
