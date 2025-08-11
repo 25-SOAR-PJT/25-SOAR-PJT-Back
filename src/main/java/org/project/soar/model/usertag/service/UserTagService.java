@@ -9,7 +9,7 @@ import java.util.List;
 
 @Service
 public interface UserTagService {
-    UserTagResponse setUserTag(UserTagRequest userTagRequest);
+    UserTagResponse setUserTag(User newUser, UserTagRequest userTagRequest);
     List<UserTagResponse> findAllUserTags();
     UserTagResponse findUserTagByUserId(Long userId);
     String getUserResidence(User user);

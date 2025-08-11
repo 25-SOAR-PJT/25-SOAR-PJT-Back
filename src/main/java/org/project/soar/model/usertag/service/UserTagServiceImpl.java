@@ -23,10 +23,7 @@ public class UserTagServiceImpl implements UserTagService {
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
 
-    public UserTagResponse setUserTag(UserTagRequest userTagRequest) {
-        Long userId = userTagRequest.getUserId();
-        User newUser = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
-
+    public UserTagResponse setUserTag(User newUser, UserTagRequest userTagRequest) {
         // 기존 태그 삭제
         List<UserTag> existingTags = userTagRepository.findByUser(newUser);
         userTagRepository.deleteAll(existingTags);
@@ -41,7 +38,7 @@ public class UserTagServiceImpl implements UserTagService {
         userTagRepository.saveAll(userTags);
         log.info("saved: " + userTags.size());
         List<Tag> tags = userTagRepository.findAllTagByUserId(newUser.getUserId());
-        UserTagResponse result = new UserTagResponse(userId, tags);
+        UserTagResponse result = new UserTagResponse(newUser.getUserId(), tags);
         return result;
     }
 
