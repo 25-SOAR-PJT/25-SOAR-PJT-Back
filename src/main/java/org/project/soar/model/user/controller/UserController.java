@@ -1,9 +1,12 @@
 package org.project.soar.model.user.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.user.User;
 import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.service.UserService;
 import org.project.soar.model.usertag.service.UserTagService;
@@ -26,6 +29,7 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
     private final UserTagService userTagService;
+    private final TokenProvider tokenProvider;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @PostMapping("/signup")
@@ -176,15 +180,15 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
     }
 
-    @GetMapping("/get-userinfo/{userId}")
-    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(@PathVariable Long userId) {
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+    @GetMapping("/get-userinfo")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
 
-        String userAddress = userTagService.getUserResidence(userId);
-        UserInfoResponse userInfo = userService.getUserInfo(userId,userAddress);
+        String userAddress = userTagService.getUserResidence(user);
+        UserInfoResponse userInfo = userService.getUserInfo(user,userAddress);
         if (userInfo != null) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userInfo, "사용자 정보 조회 성공"));
         }

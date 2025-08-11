@@ -1,11 +1,15 @@
 package org.project.soar.model.comment.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.comment.dto.CommentResponse;
 import org.project.soar.model.comment.service.CommentService;
+import org.project.soar.model.user.User;
+import org.project.soar.model.user.dto.UserInfoResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CommentController {
     private final CommentService commentService;
+    private final TokenProvider tokenProvider;
 
     @GetMapping("/")
     @Operation(summary="전체 댓글 조회", description="모든 댓글을 조회합니다.")
@@ -62,9 +67,14 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.createSuccess(null));
     }
 
-    @GetMapping("/applied/count/{userId}")
-    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(@PathVariable(value = "userId") Long userId) {
-        int count = commentService.getCommentCount(userId);
+    @GetMapping("/applied/count")
+    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        int count = commentService.getCommentCount(user);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
     }
 

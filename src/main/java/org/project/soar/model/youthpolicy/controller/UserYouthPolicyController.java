@@ -164,11 +164,14 @@ public class UserYouthPolicyController {
     }
 
     @Operation(summary = "북마크 중 종료일이 가장 가까운 정책 조회", description = "사용자의 북마크 중 종료일이 가장 가까운 정책을 조회합니다.")
-    @GetMapping("/bookmarks/latest/{userId}")
-    public ResponseEntity<ApiResponse<YouthPolicyLatestResponseDto>> getLatestBookmarkByEndDate(
-            @Parameter(description = "사용자 ID") @PathVariable Long userId) {
+    @GetMapping("/bookmarks/latest")
+    public ResponseEntity<ApiResponse<YouthPolicyLatestResponseDto>> getLatestBookmarkByEndDate(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<YouthPolicyLatestResponseDto>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
 
-        YouthPolicyLatestResponseDto youthPolicy = bookmarkService.getLatestBookmarkByEndDate(userId);
+        YouthPolicyLatestResponseDto youthPolicy = bookmarkService.getLatestBookmarkByEndDate(user);
         if (youthPolicy == null) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, "북마크된 정책이 없습니다."));
         }
@@ -188,11 +191,15 @@ public class UserYouthPolicyController {
     }
 
     @Operation(summary = "나이대별 인기 정책 조회", description = "사용자의 나이대 기준 인기 정책을 조회합니다.")
-    @GetMapping("/popular/age-group/{userId}")
-    public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(
-            @Parameter(description = "사용자 ID") @PathVariable Long userId) {
+    @GetMapping("/popular/age-group")
+    public ResponseEntity<ApiResponse<?>> getPopularPoliciesAge(HttpServletRequest request) {
         try {
-            List<YouthPolicy> popularPolicies = bookmarkService.getPopularPoliciesAge(userId);
+            User user = tokenProvider.getUserFromRequest(request);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+            }
+
+            List<YouthPolicy> popularPolicies = bookmarkService.getPopularPoliciesAge(user);
             return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
@@ -200,10 +207,14 @@ public class UserYouthPolicyController {
     }
 
     @Operation(summary = "신청한 정책 개수 조회", description = "사용자가 신청한 정책 개수를 조회합니다.")
-    @GetMapping("/applied/count/{userId}")
-    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(
-            @Parameter(description = "사용자 ID") @PathVariable Long userId) {
-        int count = userYouthPolicyService.getAppliedPolicyCount(userId);
+    @GetMapping("/applied/count")
+    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        int count = userYouthPolicyService.getAppliedPolicyCount(user);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
     }
 
