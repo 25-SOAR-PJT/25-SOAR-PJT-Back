@@ -112,10 +112,8 @@ public class YouthPolicyBookmarkService {
     /**
      * 나이대별 실시간 인기 지원사업 (Top 5)
      */
-    public List<YouthPolicy> getPopularPoliciesAge(Long userId) {
+    public List<YouthPolicy> getPopularPoliciesAge(User user) {
         try {
-            var user = userRepository.findByUserId(userId)
-                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
             int age = LocalDate.now().getYear() - user.getUserBirthDate().getYear();
             if (LocalDate.now().getDayOfYear() < user.getUserBirthDate().getDayOfYear()) {
                 age--;
@@ -130,10 +128,7 @@ public class YouthPolicyBookmarkService {
     /**
      * 북마크 중 종료일이 가장 가까운 정책 1건
      */
-    public YouthPolicyLatestResponseDto getLatestBookmarkByEndDate(Long userId) {
-        var user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
+    public YouthPolicyLatestResponseDto getLatestBookmarkByEndDate(User user) {
         List<YouthPolicy> result = bookmarkRepository.findLatestBookmarkByEndDate(user);
         if (result.isEmpty()) {
             return null; // 북마크가 없을 경우 null
