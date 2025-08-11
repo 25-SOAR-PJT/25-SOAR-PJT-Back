@@ -1,15 +1,20 @@
 package org.project.soar.model.user.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.user.User;
 import org.project.soar.model.user.dto.*;
+import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.user.service.UserService;
 import org.project.soar.model.usertag.service.UserTagService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -26,6 +31,8 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
     private final UserTagService userTagService;
+    private final TokenProvider tokenProvider;
+    private final UserRepository userRepository;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @PostMapping("/signup")
@@ -176,15 +183,18 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
     }
 
-    @GetMapping("/get-userinfo/{userId}")
-    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(@PathVariable Long userId) {
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 ID를 입력해주세요."));
+    @GetMapping("/get-userinfo")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(HttpServletRequest request) {
+        User user = getUserFromToken(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 인증에 실패했습니다."));
         }
 
-        String userAddress = userTagService.getUserResidence(userId);
-        UserInfoResponse userInfo = userService.getUserInfo(userId,userAddress);
+        String userAddress = userTagService.getUserResidence(user);
+        if (userAddress == null) {
+            userAddress = "사용자의 거주지를 선택해 주세요.";
+        }
+        UserInfoResponse userInfo = userService.getUserInfo(user,userAddress);
         if (userInfo != null) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userInfo, "사용자 정보 조회 성공"));
         }
@@ -241,5 +251,30 @@ public class UserController {
     public ResponseEntity<ApiResponse<MatchYouthPoliciesResponse>> findMatchPolicies(@RequestParam("userId") Long userId) {
         MatchYouthPoliciesResponse result = userService.getMatchPolicies(userId);
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    private String extractAccessToken(HttpServletRequest request) {
+        String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
+    }
+
+    private User getUserFromToken(HttpServletRequest request) {
+        String token = extractAccessToken(request);
+        if (token == null)
+            return null;
+
+        try {
+            String subject = tokenProvider.validateTokenAndGetSubject(token);
+            String[] parts = subject.split(":");
+            if (parts.length < 1)
+                return null;
+            Long userId = Long.parseLong(parts[0]);
+            return userRepository.findById(userId).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

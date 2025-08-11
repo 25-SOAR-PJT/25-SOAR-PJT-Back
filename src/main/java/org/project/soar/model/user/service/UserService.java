@@ -311,9 +311,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserInfoResponse getUserInfo(Long userId, String userAddress) {
-        User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
-
+    public UserInfoResponse getUserInfo(User user, String userAddress) {
         return UserInfoResponse.builder()
                 .userId(user.getUserId())
                 .userName(user.getUserName())

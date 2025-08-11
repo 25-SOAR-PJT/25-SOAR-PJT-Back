@@ -1,11 +1,17 @@
 package org.project.soar.model.comment.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.comment.dto.CommentResponse;
 import org.project.soar.model.comment.service.CommentService;
+import org.project.soar.model.user.User;
+import org.project.soar.model.user.dto.UserInfoResponse;
+import org.project.soar.model.user.repository.UserRepository;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +23,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CommentController {
     private final CommentService commentService;
+    private final TokenProvider tokenProvider;
+    private final UserRepository userRepository;
 
     @GetMapping("/")
     @Operation(summary="전체 댓글 조회", description="모든 댓글을 조회합니다.")
@@ -62,10 +70,40 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.createSuccess(null));
     }
 
-    @GetMapping("/applied/count/{userId}")
-    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(@PathVariable(value = "userId") Long userId) {
-        int count = commentService.getCommentCount(userId);
-        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
+    @GetMapping("/applied/count")
+    public ResponseEntity<ApiResponse<?>> getAppliedPolicyCount(HttpServletRequest request) {
+        User user = getUserFromToken(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        int count = commentService.getCommentCount(user);
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "작성한 댓글 개수 조회됨"));
+    }
+
+    private String extractAccessToken(HttpServletRequest request) {
+        String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
+    }
+
+    private User getUserFromToken(HttpServletRequest request) {
+        String token = extractAccessToken(request);
+        if (token == null)
+            return null;
+
+        try {
+            String subject = tokenProvider.validateTokenAndGetSubject(token);
+            String[] parts = subject.split(":");
+            if (parts.length < 1)
+                return null;
+            Long userId = Long.parseLong(parts[0]);
+            return userRepository.findById(userId).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 }

@@ -55,10 +55,7 @@ public class UserYouthPolicyService {
     }
 
     // 신청한 정책 개수 조회
-    public int getAppliedPolicyCount(Long userId) {
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-
+    public int getAppliedPolicyCount(User user) {
         int count = userYouthPolicyRepository.countByUser(user);
         if (count < 0) {
             throw new RuntimeException("신청한 정책 개수 조회 중 오류가 발생했습니다.");

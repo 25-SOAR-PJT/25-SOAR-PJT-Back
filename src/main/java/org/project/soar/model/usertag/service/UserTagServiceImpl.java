@@ -64,8 +64,7 @@ public class UserTagServiceImpl implements UserTagService {
                     return new UserTagResponse(user.getUserId(), tags);
     }
 
-    public String getUserResidence(Long userId) {
-        User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
+    public String getUserResidence(User user) {
         return userTagRepository.findResidenceTagsByUser(user).stream()
                 .findFirst()
                 .map(ut -> ut.getTag().getTagName()) // 태그명(거주지역명)
