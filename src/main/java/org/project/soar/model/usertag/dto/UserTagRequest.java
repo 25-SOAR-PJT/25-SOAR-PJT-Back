@@ -9,12 +9,10 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 public class UserTagRequest {
-    private Long userId;
     private List<Long> tagId;
 
     @Builder
-    public UserTagRequest(Long userId, List<Long> tagId) {
-        this.userId = userId;
+    public UserTagRequest(List<Long> tagId) {
         this.tagId = tagId;
     }
 }

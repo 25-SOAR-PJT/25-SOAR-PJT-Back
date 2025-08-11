@@ -35,8 +35,8 @@ public class CommentService {
         ).collect(Collectors.toList());
     }
 
-    public List<CommentResponse> getAllCommentByUserId(String userId) {
-        List<Comment> comments = commentRepository.findByUser_UserId(Long.valueOf(userId));
+    public List<CommentResponse> getAllCommentByUserId(Long userId) {
+        List<Comment> comments = commentRepository.findByUser_UserId(userId);
         return comments.stream().map(
                 comment -> new CommentResponse(
                         comment.getCommentId(),
@@ -61,9 +61,7 @@ public class CommentService {
         ).collect(Collectors.toList());
     }
 
-    public List<CommentResponse> createComment(CommentRequest request) {
-        User user = userRepository.findById(Long.valueOf(request.getUserId()))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+    public List<CommentResponse> createComment(User user, CommentRequest request) {
         YouthPolicy policy = youthPolicyRepository.findById(request.getPolicyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 정책입니다."));
 
