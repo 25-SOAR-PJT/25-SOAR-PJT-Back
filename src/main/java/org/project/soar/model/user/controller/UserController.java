@@ -140,13 +140,16 @@ public class UserController {
 
     // 비밀번호 재설정 (이메일, 현재 비밀번호, 새 비밀번호, 비밀번호 확인)
     @PostMapping("/update-password")
-    public ResponseEntity<ApiResponse<?>> resetPassword(@RequestBody UpdatePasswordRequest request) {
-        String userEmail = request.getUserEmail();
-        String currentPassword = request.getCurrentPassword();
-        String newPassword = request.getNewPassword();
-        String confirmPassword = request.getConfirmPassword();
+    public ResponseEntity<ApiResponse<?>> resetPassword(HttpServletRequest request, @RequestBody UpdatePasswordRequest pwRequest) {
+        String newPassword = pwRequest.getNewPassword();
+        String confirmPassword = pwRequest.getConfirmPassword();
 
-        if (userEmail == null || currentPassword == null || newPassword == null || confirmPassword == null) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<UserInfoResponse>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        if (newPassword == null || confirmPassword == null) {
             return ResponseEntity.badRequest().body(ApiResponse.createError("필수 입력값이 누락되었습니다."));
         }
 
@@ -154,7 +157,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(ApiResponse.createError("새 비밀번호와 비밀번호 확인이 일치하지 않습니다."));
         }
 
-        String result = userService.updatePassword(userEmail, currentPassword, newPassword);
+        String result = userService.updatePassword(user, newPassword);
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
     }
 

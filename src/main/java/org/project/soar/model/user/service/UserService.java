@@ -281,15 +281,7 @@ public class UserService {
     }
 
     @Transactional
-    public String updatePassword(String userEmail, String currentPassword, String newPassword) {
-        User user = userRepository.findByUserEmail(userEmail);
-        if (user == null) {
-            return "해당 이메일로 등록된 사용자가 없습니다.";
-        }
-
-        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
-            return "현재 비밀번호가 일치하지 않습니다.";
-        }
+    public String updatePassword(User user, String newPassword) {
 
         if (!isValidPassword(newPassword)) {
             return "비밀번호는 8~20자로 영문 소문자, 숫자를 조합해서 사용해주세요.";

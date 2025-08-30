@@ -5,14 +5,12 @@ import org.project.soar.model.user.User;
 import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.youthpolicy.UserYouthPolicy;
 import org.project.soar.model.youthpolicy.YouthPolicy;
-import org.project.soar.model.youthpolicy.dto.ApplyStatus;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyItemResultDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyResponseDto;
+import org.project.soar.model.youthpolicy.dto.*;
 import org.project.soar.model.youthpolicy.repository.UserYouthPolicyRepository;
 import org.project.soar.model.youthpolicy.repository.YouthPolicyRepository;
 import org.project.soar.util.DateClassifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -64,7 +62,7 @@ public class UserYouthPolicyService {
         return new YouthPolicyApplyResponseDto(
                 policy.getApplyUrl(),
                 (policy.getApplyUrl() == null || policy.getApplyUrl().isBlank())
-                        ? "정책 신청이 완료되었습니다. (이동할 신청 URL은 없습니다)"
+                        ? "정책 신청이 완료되었습니다."
                         : "정책 신청이 완료되었습니다.",
                 policyId,
                 user.getUserId());
@@ -267,5 +265,53 @@ public class UserYouthPolicyService {
             throw new RuntimeException("신청한 정책 개수 조회 중 오류가 발생했습니다.");
         }
         return count;
+    }
+
+    @Transactional
+    public YouthPolicyApplyToggleResponseDto toggleApply(User user, String policyId) {
+        // 정책 존재 여부 확인
+        YouthPolicy policy = youthPolicyRepository.findById(policyId).orElse(null);
+        if (policy == null) {
+            return YouthPolicyApplyToggleResponseDto.builder()
+                    .policyId(policyId)
+                    .applied(false)
+                    .message("정책을 찾을 수 없습니다.")
+                    .build();
+        }
+
+        // 이미 신청했는지 확인
+        boolean alreadyApplied = userYouthPolicyRepository.existsByUserAndPolicy(user, policy);
+        if (alreadyApplied) {
+            // 신청 취소
+            userYouthPolicyRepository.deleteByUserAndPolicy(user, policy);
+            return YouthPolicyApplyToggleResponseDto.builder()
+                    .policyId(policyId)
+                    .applied(false)
+                    .message("해당 지원 사업이 신청 취소 되었어요!")
+                    .build();
+        } else {
+            // 신규 신청 (기존 로직 재사용)
+            YouthPolicyApplyResponseDto applyDto = applyToPolicy(user, policyId);
+            String msg = applyDto.getMessage() == null ? "" : applyDto.getMessage();
+
+
+            return YouthPolicyApplyToggleResponseDto.builder()
+                    .policyId(policyId)
+                    .applied(true)
+                    .applyUrl(applyDto.getApplyUrl())
+                    .message(Objects.requireNonNullElse(msg, "해당 지원 사업이 신청 완료 되었어요!"))
+                    .build();
+        }
+    }
+
+    public List<YouthPolicyAppliedItemDto> getAppliedPoliciesLatest(User user) {
+        var rows = userYouthPolicyRepository.findByUserOrderByAppliedAtDesc(user);
+        if (rows == null || rows.isEmpty()) return List.of();
+
+        return rows.stream()
+                .map(UserYouthPolicy::getPolicy)
+                .filter(Objects::nonNull)
+                .map(YouthPolicyAppliedItemDto::from)
+                .toList();
     }
 }

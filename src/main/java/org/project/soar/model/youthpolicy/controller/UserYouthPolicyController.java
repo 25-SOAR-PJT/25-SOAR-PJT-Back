@@ -7,16 +7,17 @@ import org.project.soar.global.api.ApiResponse;
 import org.project.soar.model.user.User;
 import org.project.soar.model.user.repository.UserRepository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyApplyResponseDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyBookmarkResponseDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyRequestDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyBulkApplyResponseDto;
-import org.project.soar.model.youthpolicy.dto.YouthPolicyLatestResponseDto;
+import org.project.soar.model.youthpolicy.dto.*;
 import org.project.soar.model.youthpolicy.service.UserYouthPolicyService;
 import org.project.soar.model.youthpolicy.service.YouthPolicyBookmarkService;
+import org.project.soar.model.youthpolicy.service.YouthPolicyService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,11 +29,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 @RequiredArgsConstructor
 @RequestMapping("/api/user-policies")
 @Tag(name = "UserYouthPolicy", description = "사용자 정책 신청/북마크 관련 API")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "authorization")
 public class UserYouthPolicyController {
 
     private final UserYouthPolicyService userYouthPolicyService;
     private final YouthPolicyBookmarkService bookmarkService;
+    private final YouthPolicyService youthPolicyService;
     private final TokenProvider tokenProvider;
     private final UserRepository userRepository;
 
@@ -60,9 +62,9 @@ public class UserYouthPolicyController {
                 dto,
                 (dto.getApplyUrl() == null || dto.getApplyUrl().isBlank())
                         ? String.format("정책 신청 완료(이동할 URL 없음): policyId=%s, userId=%d",
-                                dto.getPolicyId(), dto.getUserId())
+                        dto.getPolicyId(), dto.getUserId())
                         : String.format("정책 신청 완료: policyId=%s, userId=%d, redirectUrl 반환됨",
-                                dto.getPolicyId(), dto.getUserId())));
+                        dto.getPolicyId(), dto.getUserId())));
     }
 
     @Operation(summary = "정책 북마크 토글", description = "해당 정책의 북마크 상태를 토글합니다. 없으면 추가, 있으면 해제.")
@@ -181,6 +183,7 @@ public class UserYouthPolicyController {
 
     @Operation(summary = "인기 정책 조회", description = "전체 사용자 북마크 수를 기준으로 인기 정책을 조회합니다.")
     @GetMapping("/popular")
+    @CrossOrigin(origins = "*")
     public ResponseEntity<ApiResponse<?>> getPopularPolicies() {
         try {
             List<YouthPolicy> popularPolicies = bookmarkService.getPopularPolicies();
@@ -254,4 +257,197 @@ public class UserYouthPolicyController {
 
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(resp, msg));
     }
+
+    @GetMapping("/mainLogin")
+    @Operation(summary = "메인용 정책 목록(로그인 + 북마크 여부)")
+    public ResponseEntity<ApiResponse<?>> getMainYouthPoliciesWithBookmark( // ★ Boomark → Bookmark 로 수정
+                                                                            @RequestParam(defaultValue = "") String keyword,
+                                                                            @RequestParam(defaultValue = "") String category,
+                                                                            @RequestParam(value = "page", defaultValue = "0") int page,
+                                                                            @RequestParam(value = "size", defaultValue = "10") int size,
+                                                                            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
+                                                                            @RequestParam(value = "sortDir", defaultValue = "desc") String sortDir,
+                                                                            HttpServletRequest request
+    ) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        var pageDto = youthPolicyService.searchByKeywordAndCategoryPagedMainWithBookmark(
+                user, keyword, category, pageable);
+
+        return ResponseEntity.ok(ApiResponse.createSuccess(pageDto));
+    }
+
+    @GetMapping("/mainLoginTags")
+    @Operation(summary = "메인용 정책 목록(로그인 + 북마크 여부 + 해당하는 태그 and 검색)")
+    public ResponseEntity<ApiResponse<?>> getMainYouthPoliciesWithBookmarkByTags(
+            @RequestParam(value = "tags", defaultValue = "") String tags,
+            @RequestParam(defaultValue = "") String category,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "desc") String sortDir,
+            HttpServletRequest request
+    ) {
+        User user = tokenProvider.getUserFromRequest(request);
+
+        // 태그 파싱 ("1,2,3" 또는 줄바꿈 혼합)
+        final List<Long> tagIds;
+        try {
+            tagIds = Arrays.stream(tags.split("[,\\n]"))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .map(Long::valueOf)
+                    .distinct()
+                    .toList();
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.createError("태그 ID는 숫자여야 합니다. 입력값: " + tags));
+        }
+
+        // 정렬/페이징 구성
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        var pageDto = youthPolicyService.searchByTagsAndCategoryPagedMainWithBookmark(
+                user, tagIds, category, pageable);
+
+        return ResponseEntity.ok(ApiResponse.createSuccess(pageDto));
+    }
+
+    @Operation(
+            summary = "사용자 북마크(신청여부/태그 포함) 조회",
+            description = "사용자가 북마크한 모든 정책을 신청완료 여부와 태그 리스트와 함께 조회합니다."
+    )
+    @GetMapping("/bookmarks/with-meta")
+    public ResponseEntity<ApiResponse<?>> getBookmarksWithMeta(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        List<YouthPolicyBookmarkWithMetaResponseDto> list =
+                bookmarkService.getUserBookmarksWithMeta(user);
+
+        String message = String.format("북마크(확장) %d건 조회됨", list.size());
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(list, message));
+    }
+
+    @Operation(
+            summary = "정책 북마크 일괄 해제",
+            description = "전달된 policyId 리스트의 북마크를 한 번에 해제합니다. 존재하지 않거나 이미 해제된 항목은 건너뜁니다."
+    )
+    @PostMapping("/bookmarks/bulk-unbookmark")
+    public ResponseEntity<ApiResponse<?>> unbookmarkPoliciesBulk(
+            HttpServletRequest request,
+            @RequestBody PolicyIdListRequestDto dto
+    ) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+        if (dto == null || dto.getPolicyIds() == null || dto.getPolicyIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("policyIds가 비어 있습니다."));
+        }
+
+        BulkUnbookmarkResponseDto result = bookmarkService.unbookmarkMany(user, dto.getPolicyIds());
+
+        String msg = String.format(
+                "요청 %d건 중 해제 %d건, 스킵 %d건",
+                result.getRequestedCount(),
+                result.getRemovedCount(),
+                result.getSkippedCount()
+        );
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(result, msg));
+    }
+
+    @Operation(
+            summary = "정책 신청 토글",
+            description = "신청되어 있으면 취소하고, 아니면 신청합니다. 신청 마감/종료 시 신청 시도는 에러로 반환합니다."
+    )
+    @PostMapping("/{policyId}/apply/toggle")
+    public ResponseEntity<ApiResponse<?>> toggleApply(
+            HttpServletRequest request,
+            @Parameter(description = "정책 ID") @PathVariable String policyId) {
+
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        YouthPolicyApplyToggleResponseDto dto = userYouthPolicyService.toggleApply(user, policyId);
+
+        // 에러 케이스: 서비스에서 message에 마감/종료/미존재 등을 넣어줌
+        String msg = dto.getMessage() == null ? "" : dto.getMessage();
+        boolean isError = msg.contains("종료") || msg.contains("마감") || msg.contains("정책을 찾을 수 없습니다.");
+        if (isError) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError(msg));
+        }
+
+        String okMessage = dto.isApplied()
+                ? String.format("정책 신청 완료: policyId=%s, userId=%d%s",
+                dto.getPolicyId(), user.getUserId(),
+                (dto.getApplyUrl() == null || dto.getApplyUrl().isBlank()) ? ", redirectUrl 없음" : ", redirectUrl 반환됨")
+                : String.format("정책 신청 취소 완료: policyId=%s, userId=%d", dto.getPolicyId(), user.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(dto, okMessage));
+    }
+
+    @Operation(
+            summary = "신청 완료 정책 목록(최신순)",
+            description = "로그인한 사용자가 신청 완료한 모든 정책을 신청일 내림차순으로 반환합니다."
+    )
+    @GetMapping("/applied")
+    public ResponseEntity<ApiResponse<?>> getAppliedPoliciesLatest(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        var list = userYouthPolicyService.getAppliedPoliciesLatest(user);
+        String message = String.format("신청 완료 정책 %d건(최신순) 조회됨", list.size());
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(list, message));
+    }
+
+    @Operation(summary = "인기 정책 조회(이름 + id만)", description = "전체 사용자 북마크 수를 기준으로 인기 정책을 조회합니다.")
+    @GetMapping("/popularName")
+    @CrossOrigin(origins = "*")
+    public ResponseEntity<ApiResponse<?>> getPopularPoliciesName() {
+        try {
+            List<YouthPolicyPopularView> popularPolicies = bookmarkService.getPopularPoliciesName();
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
+    }
+
+
+    @Operation(summary = "나이대별 인기 정책 조회(explore 형식 + 사용자 나이)", description = "사용자의 나이대 기준 인기 정책을 조회합니다.")
+    @GetMapping("/popular/age-user")
+    public ResponseEntity<ApiResponse<?>> getPopularPoliciesUserAge(HttpServletRequest request) {
+        try {
+            User user = tokenProvider.getUserFromRequest(request);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+            }
+            if (user.getUserBirthDate() == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.createError("사용자의 생년월일이 없습니다. 마이페이지에서 생년월일을 등록해 주세요."));
+            }
+
+            List<YouthPolicyUserAgeItemDto> popularPolicies = bookmarkService.getPopularPoliciesUserAge(user);
+            return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
+        }
+    }
+
 }

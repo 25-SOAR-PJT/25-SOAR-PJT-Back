@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 
+
 @Repository
 public interface YouthPolicyTagRepository extends JpaRepository<YouthPolicyTag, Long> {
 
@@ -19,4 +20,25 @@ public interface YouthPolicyTagRepository extends JpaRepository<YouthPolicyTag, 
 
     @Query("SELECT ypt.youthPolicy FROM YouthPolicyTag ypt WHERE ypt.tag.tagId IN :tagIds")
     List<YouthPolicy> findByTagIds(@Param("tagIds") List<Long> tagIds);
+
+    @Query("""
+           select ypt.youthPolicy as youthPolicy,
+                  count(distinct ypt.tag.tagId) as matchCount
+           from YouthPolicyTag ypt
+           where ypt.tag.tagId in :tagIds
+           group by ypt.youthPolicy
+           """)
+    List<PolicyTagMatchProjection> findPolicyMatchCounts(@Param("tagIds") List<Long> tagIds);
+
+
+    // (기존) matches 등 다른 메서드가 이미 있다면 그대로 두고 아래만 추가
+    @Query("""
+        SELECT ypt.youthPolicy.policyId AS policyId,
+               t.tagId                  AS tagId,
+               t.tagName                AS tagName
+        FROM YouthPolicyTag ypt
+        JOIN ypt.tag t
+        WHERE ypt.youthPolicy.policyId IN :policyIds
+    """)
+    List<TagByPolicyProjection> findTagsByPolicyIds(@Param("policyIds") List<String> policyIds);
 }
