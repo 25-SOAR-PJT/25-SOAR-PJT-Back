@@ -1,5 +1,6 @@
 package org.project.soar.model.youthpolicy.repository;
 import org.project.soar.model.youthpolicy.YouthPolicy;
+import org.project.soar.model.youthpolicy.dto.YouthPolicyEndDateItemDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -318,6 +319,18 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
 
     // 사업 마감: yyyyMMdd 정확히 일치
     List<YouthPolicy> findByBusinessPeriodEnd(String ymd);
+
+    /**
+     * 페이징된 복합 검색
+     */
+    @Query("SELECT yp.policyId, yp.policyName, yp.policyKeyword, yp.largeClassification, yp.mediumClassification, yp.supervisingInstName, yp.dateLabel FROM YouthPolicy yp WHERE " +
+            "(:keyword IS NULL OR yp.policyName LIKE %:keyword% OR yp.policyKeyword LIKE %:keyword% OR yp.policyExplanation LIKE %:keyword%) AND " +
+            "(:category IS NULL OR yp.largeClassification LIKE %:category% OR yp.mediumClassification LIKE %:category%)")
+    Page<YouthPolicy> findByKeywordAndCategoryPagedMain(@Param("keyword") String keyword,
+                                                    @Param("category") String category,
+                                                    Pageable pageable);
+
+
 
 }
 

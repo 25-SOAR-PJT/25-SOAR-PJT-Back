@@ -6,14 +6,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class UpdatePasswordResponse {
-    private String userEmail;
-    private String currentPassword;
     private String newPassword;
     private String confirmPassword;
 
-    public UpdatePasswordResponse(String userEmail, String currentPassword, String newPassword, String confirmPassword) {
-        this.userEmail = userEmail;
-        this.currentPassword = currentPassword;
+    public UpdatePasswordResponse(String newPassword, String confirmPassword) {
         this.newPassword = newPassword;
         this.confirmPassword = confirmPassword;
     }

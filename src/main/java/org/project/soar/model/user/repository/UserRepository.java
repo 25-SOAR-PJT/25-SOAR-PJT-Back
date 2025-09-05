@@ -21,5 +21,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUserId(Long userId);
 
-    List<User> findByUserNameAndUserBirthDateAndUserGender(@Param("userEmail") String userEmail, @Param("userBirthDate") LocalDate userBirthDate, @Param("userGender") boolean userGender);
+    List<User> findByUserNameAndUserBirthDate(@Param("userEmail") String userEmail, @Param("userBirthDate") LocalDate userBirthDate);
 }

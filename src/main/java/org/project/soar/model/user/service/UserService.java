@@ -72,6 +72,13 @@ public class UserService {
                     .build();
         }
 
+        // ✅ 필수 약관 동의를 먼저 검증 (DB 저장 이전)
+        if (!permissionService.isAllRequiredAgreed(agreedTerms)) {
+            return SignUpResponse.builder()
+                    .msg("필수 약관에 동의해야 회원가입이 가능합니다.")
+                    .build();
+        }
+
         // 비밀번호 보안 규칙 확인
         if (!isValidPassword(request.getUserPassword())) {
             return SignUpResponse.builder()
@@ -83,7 +90,7 @@ public class UserService {
                 .userName(request.getUserName())
                 .userBirthDate(request.getUserBirthDate().toLocalDate())
                 .userPhoneNumber(request.getUserPhoneNumber())
-                .userGender(request.isUserGender())
+                .userGender(request.getUserGender())
                 .userEmail(request.getUserEmail())
                 .userPassword(passwordEncoder.encode(request.getUserPassword()))
                 .userRole(Role.USER)
@@ -91,12 +98,6 @@ public class UserService {
 
         userRepository.save(user);
 
-        // 필수 약관 동의 확인
-        if (!permissionService.hasAgreedToRequiredTerms(user)) {
-            return SignUpResponse.builder()
-                    .msg("필수 약관에 동의해야 회원가입이 가능합니다.")
-                    .build();
-        }
         // 약관 동의 저장
         permissionService.saveAgreedTerms(user, agreedTerms);
 
@@ -251,11 +252,15 @@ public class UserService {
     }
 
     @Transactional
-    public FindIdResponse findId(String userName, LocalDate userBirthDate, boolean userGender) {
-        List<User> users = userRepository.findByUserNameAndUserBirthDateAndUserGender(userName, userBirthDate, userGender);
+    public FindIdResponse findId(String userName, LocalDate userBirthDate) {
+
+        List<User> users = userRepository.findByUserNameAndUserBirthDate(userName, userBirthDate);
+
         if (users == null || users.isEmpty()) {
             return null; // 해당 유저가 존재하지 않음
         }
+
+
 
         // 이메일 리스트 추출
         List<String> userEmails = users.stream()
@@ -281,15 +286,7 @@ public class UserService {
     }
 
     @Transactional
-    public String updatePassword(String userEmail, String currentPassword, String newPassword) {
-        User user = userRepository.findByUserEmail(userEmail);
-        if (user == null) {
-            return "해당 이메일로 등록된 사용자가 없습니다.";
-        }
-
-        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
-            return "현재 비밀번호가 일치하지 않습니다.";
-        }
+    public String updatePassword(User user, String newPassword) {
 
         if (!isValidPassword(newPassword)) {
             return "비밀번호는 8~20자로 영문 소문자, 숫자를 조합해서 사용해주세요.";
@@ -302,7 +299,7 @@ public class UserService {
     }
 
     @Transactional
-    public String updateUserName(Long userId, String newUserName) {
+    public String updateUserNameOld(Long userId, String newUserName) {
         User user = userRepository.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
 
         user.updateUserName(newUserName);
@@ -410,4 +407,47 @@ public class UserService {
         List<YouthPolicy> youthPolicies = youthPolicyTagRepository.findByTagIds(tagIds);
         return new MatchYouthPoliciesResponse(userId, tags, youthPolicies);
     }
+
+
+    @Transactional
+    public UserDetailInfoResponse getUserDetailInfo(User user) {
+        return UserDetailInfoResponse.builder()
+                .userId(user.getUserId())
+                .userName(user.getUserName())
+                .userBirthDate(user.getUserBirthDate())
+                .userGender(user.getUserGender())
+                .build();
+    }
+
+    @Transactional
+    public String updateUserName(User user, String newUserName) {
+
+        user.updateUserName(newUserName);
+        userRepository.save(user);
+        return "사용자 이름 업데이트 성공";
+    }
+
+    @Transactional
+    public String updateUserBirth(User user, String newUserBirth) {
+
+        user.updateUserBirth(newUserBirth);
+        userRepository.save(user);
+        return "사용자 생년월일 업데이트 성공";
+    }
+
+    @Transactional
+    public String updateUserGender(User user, Boolean newUserGender) {
+
+        user.updateUserGender(newUserGender);
+        userRepository.save(user);
+        return "사용자 성별 업데이트 성공";
+    }
+
+    @Transactional
+    public boolean getTerm(User user) {
+        // "선택약관2"에 대해 status가 true(동의)인 데이터가 있는지 확인합니다.
+        return permissionRepository.existsByUserAndTypeAndStatus(user, "선택약관2", true);
+    }
+
+
 }

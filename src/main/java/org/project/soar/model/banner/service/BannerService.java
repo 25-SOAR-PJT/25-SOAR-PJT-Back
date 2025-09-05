@@ -13,10 +13,11 @@ import java.io.IOException;
 public class BannerService {
     private final BannerRepository bannerRepository;
 
-    public Banner saveBanner(MultipartFile file) throws IOException {
+    public Banner saveBanner(MultipartFile file, String url) throws IOException {
         Banner banner = Banner.builder()
                 .data(file.getBytes())
                 .contentType(file.getContentType())  // MIME 타입 저장
+                .url(url) // url 함께 저장
                 .build();
         return bannerRepository.save(banner);
     }

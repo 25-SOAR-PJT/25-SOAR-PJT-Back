@@ -12,14 +12,14 @@ public class SignUpRequest {
     private final String userName;
     private final Date userBirthDate;
     private final String userPhoneNumber;
-    private final boolean userGender;
+    private final Boolean userGender;
     private final String userEmail;
     private final String userPassword;
     private final String otp;
     private final List<Boolean> agreedTerms;
 
     @Builder
-    public SignUpRequest(String userName, Date userBirthDate, String userPhoneNumber, boolean userGender, String userEmail, String userPassword, String otp, List<Boolean> agreedTerms) {
+    public SignUpRequest(String userName, Date userBirthDate, String userPhoneNumber, Boolean userGender, String userEmail, String userPassword, String otp, List<Boolean> agreedTerms) {
         this.userName = userName;
         this.userBirthDate = userBirthDate;
         this.userPhoneNumber = userPhoneNumber;

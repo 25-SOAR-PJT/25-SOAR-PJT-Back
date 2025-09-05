@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
     private final YouthPolicyRepository youthPolicyRepository;
 
     public List<CommentResponse> getAllComment() {
@@ -29,6 +28,7 @@ public class CommentService {
                         comment.getCommentId(),
                         comment.getComment(),
                         comment.getYouthPolicy().getPolicyId(),
+                        comment.getYouthPolicy().getPolicyName(),
                         comment.getUser().getUserId(),
                         comment.getUser().getUserName(),
                         comment.getCreateDate())
@@ -42,6 +42,7 @@ public class CommentService {
                         comment.getCommentId(),
                         comment.getComment(),
                         comment.getYouthPolicy().getPolicyId(),
+                        comment.getYouthPolicy().getPolicyName(),
                         comment.getUser().getUserId(),
                         comment.getUser().getUserName(),
                         comment.getCreateDate())
@@ -55,6 +56,7 @@ public class CommentService {
                         comment.getCommentId(),
                         comment.getComment(),
                         comment.getYouthPolicy().getPolicyId(),
+                        comment.getYouthPolicy().getPolicyName(),
                         comment.getUser().getUserId(),
                         comment.getUser().getUserName(),
                         comment.getCreateDate())
@@ -85,6 +87,7 @@ public class CommentService {
                 updated.getCommentId(),
                 updated.getComment(),
                 updated.getYouthPolicy().getPolicyId(),
+                updated.getYouthPolicy().getPolicyName(),
                 updated.getUser().getUserId(),
                 updated.getUser().getUserName(),
                 updated.getCreateDate()
@@ -101,5 +104,6 @@ public class CommentService {
     public int getCommentCount(User user) {
         return commentRepository.countByUser(user);
     }
+
 
 }

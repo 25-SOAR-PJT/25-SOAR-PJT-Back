@@ -25,4 +25,7 @@ public class Banner {
     @Column(name = "content_type")
     private String contentType;
 
+    @Column(name = "url")
+    private String url;
+
 }

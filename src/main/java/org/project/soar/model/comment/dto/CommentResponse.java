@@ -12,14 +12,16 @@ public class CommentResponse {
     private Long commentId;
     private String comment;
     private String policyId;
+    private String policyName;
     private Long userId;
     private String userName;
     private LocalDateTime createdDate;
     @Builder
-    public CommentResponse(Long commentId, String comment, String policyId, Long userId, String userName, LocalDateTime createdDate) {
+    public CommentResponse(Long commentId, String comment, String policyId, String policyName, Long userId, String userName, LocalDateTime createdDate) {
         this.commentId = commentId;
         this.comment = comment;
         this.policyId = policyId;
+        this.policyName = policyName;
         this.userId = userId;
         this.userName = userName;
         this.createdDate = createdDate;
