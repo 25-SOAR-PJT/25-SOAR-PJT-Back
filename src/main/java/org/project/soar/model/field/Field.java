@@ -1,19 +1,26 @@
 package org.project.soar.model.field;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
-@Table(name = "Field")
-@Data
+@Table(name = "field")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Field {
-    @Id
-    @Column(name = "field_id")
-    private Integer fieldId;
 
-    @Column(name = "field_name")
-    private Integer fieldName;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "field_id")
+    private Long fieldId;
+
+    @Column(name = "field_name", length = 100, nullable = false)
+    private String fieldName;
+
+    public Field(String name) {
+        this.fieldName = name;
+    }
 }

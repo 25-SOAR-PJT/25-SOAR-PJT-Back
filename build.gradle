@@ -1,8 +1,7 @@
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.5'
-    id 'io.spring.dependency-management' version '1.1.7'
-}
+    id 'io.spring.dependency-management' version '1.1.7'}
 
 group = 'org.project'
 version = '0.0.1-SNAPSHOT'
@@ -27,6 +26,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // spring-dotenv for environment variable management
+    implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+
+    // swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'com.mysql:mysql-connector-j'
@@ -35,6 +41,26 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    implementation 'org.springframework.boot:spring-boot-starter-validation'  
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // 이메일  기능
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    //redis 추가
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // json 파싱
+    implementation 'com.google.code.gson:gson:2.12.1'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    
+    runtimeOnly "io.netty:netty-resolver-dns-native-macos:4.1.107.Final:osx-aarch_64"
+
 }
 
 tasks.named('test') {

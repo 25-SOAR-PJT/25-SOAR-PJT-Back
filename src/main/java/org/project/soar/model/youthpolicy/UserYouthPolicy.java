@@ -2,43 +2,30 @@ package org.project.soar.model.youthpolicy;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import org.project.soar.model.user.User;
 
 @Entity
-@Table(name = "UserYouthPolicy")
-@Data
+@Table(name = "user_youth_policy")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserYouthPolicy {
-    @EmbeddedId
-    private UserYouthPolicyId id;
 
-    @Column(name = "applied_yn")
-    private Boolean appliedYn;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(name = "archivedDate")
-    private LocalDateTime archivedDate;
-
-    @Column(name = "delete_yn")
-    private Boolean deleteYn;
-
-    @ManyToOne
-    @MapsId("projectId")
-    @JoinColumn(name = "project_id")
-    private YouthPolicy youthPolicy;
-
-    @ManyToOne
-    @MapsId("userId")
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
-}
 
-@Embeddable
-@Data
-class UserYouthPolicyId implements Serializable {
-    @Column(name = "project_id")
-    private Integer projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "policy_id", referencedColumnName = "policy_id")
+    private YouthPolicy policy;
 
-    @Column(name = "user_id")
-    private Integer userId;
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
 }

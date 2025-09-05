@@ -1,25 +1,26 @@
 package org.project.soar.model.youthpolicy;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
-@Table(name = "YouthPolicyBanner")
-@Data
+@Table(name = "youth_policy_banner")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class YouthPolicyBanner {
-    @Id
-    @Column(name = "project_id")
-    private Integer projectId;
 
-    @Column(name = "img")
+    @Id
+    @Column(name = "policy_id", length = 50)
+    private String policyId;
+
+    @Column(name = "img", length = 3000)
     private String img;
 
-    @OneToOne
-    @JoinColumn(name = "project_id", insertable = false, updatable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "policy_id", referencedColumnName = "policy_id")
     private YouthPolicy youthPolicy;
 }
