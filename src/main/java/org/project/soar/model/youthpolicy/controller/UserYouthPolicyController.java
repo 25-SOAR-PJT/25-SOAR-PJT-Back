@@ -443,11 +443,55 @@ public class UserYouthPolicyController {
                 return ResponseEntity.badRequest().body(ApiResponse.createError("사용자의 생년월일이 없습니다. 마이페이지에서 생년월일을 등록해 주세요."));
             }
 
+
             List<YouthPolicyUserAgeItemDto> popularPolicies = bookmarkService.getPopularPoliciesUserAge(user);
             return ResponseEntity.ok(ApiResponse.createSuccess(popularPolicies));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.createError("인기 정책 조회 실패: " + e.getMessage()));
         }
+    }
+
+
+    @PostMapping("/apply/toggle/bulk")
+    @Operation(summary = "여러 정책 신청 토글(배치)", description = """
+            로그인한 사용자가 전달한 policyIds 목록을 일괄 토글합니다.
+
+                - 신청되어 있지 않으면 '신규 신청' 처리, 이미 신청되어 있으면 '신청 취소' 처리합니다.
+                - 단, 신청 시도 시 기존 신청 제약(오픈 예정/마감/종료 등)은 apply/bulk와 동일하게 적용됩니다.
+                - 요청/응답 스키마는 /apply/bulk 와 동일합니다.
+                  (alreadyAppliedCount는 '취소된 건수'로 해석됩니다)
+                - 신청 URL은 반환하지 않습니다.
+                - 각 정책별 처리 결과(APPLIED, ALREADY_APPLIED, APPLY_ENDED, BUSINESS_ENDED, OPEN_UPCOMING, NOT_FOUND)와
+                  전체 합계를 포함한 요약 카운트를 반환합니다.
+            """)
+    public ResponseEntity<ApiResponse<?>> toggleApplyPoliciesBulk(
+            HttpServletRequest request,
+            @RequestBody YouthPolicyBulkApplyRequestDto bulkRequest
+    ) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+        if (bulkRequest == null || bulkRequest.getPolicyIds() == null || bulkRequest.getPolicyIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.createError("policyIds가 비어 있습니다."));
+        }
+
+        YouthPolicyBulkApplyResponseDto resp =
+                userYouthPolicyService.toggleApplyToPolicies(user, bulkRequest.getPolicyIds());
+
+        // 메시지 포맷도 /apply/bulk 와 동일하게 유지합니다.
+        String msg = String.format(
+                "총 %d건 요청 중 신청 %d건, 이미 신청 %d건, 신청 마감 %d건, 사업 종료 %d건, 오픈 예정 %d건, 미존재 %d건",
+                resp.getRequestedCount(),
+                resp.getAppliedCount(),
+                resp.getAlreadyAppliedCount(),   // 토글에서는 '취소된 건수' 의미
+                resp.getApplyEndedCount(),
+                resp.getBusinessEndedCount(),
+                resp.getOpenUpcomingCount(),
+                resp.getNotFoundCount()
+        );
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(resp, msg));
     }
 
 }

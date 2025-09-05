@@ -10,11 +10,11 @@ public class UserDto {
     private String userName;
     private Date userBirthDate;
     private String userPhoneNumber;
-    private boolean userGender;
+    private Boolean userGender;
     private String userEmail;
 
     @Builder
-    public UserDto(Long userId, String userName, Date userBirthDate, String userPhoneNumber, boolean userGender,
+    public UserDto(Long userId, String userName, Date userBirthDate, String userPhoneNumber, Boolean userGender,
             String userEmail) {
         this.userId = userId;
         this.userName = userName;

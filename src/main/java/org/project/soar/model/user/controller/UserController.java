@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.project.soar.config.TokenProvider;
 import org.project.soar.global.api.ApiResponse;
+import org.project.soar.model.permission.service.PermissionService;
 import org.project.soar.model.user.User;
 import org.project.soar.model.user.dto.*;
 import org.project.soar.model.user.service.UserService;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
     private final UserTagService userTagService;
+    private final PermissionService permissionService;
     private final TokenProvider tokenProvider;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
@@ -118,10 +120,12 @@ public class UserController {
     @GetMapping("/find-id")
     public ResponseEntity<ApiResponse<FindIdResponse>> findId(
             @RequestParam String userName,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate userBirthDate,
-            @RequestParam boolean userGender) {
+            @RequestParam String userBirthdate) {
 
-        FindIdResponse response = userService.findId(userName,userBirthDate, userGender);
+        String trimmedDate = userBirthdate.trim();
+        LocalDate parsedDate = LocalDate.parse(trimmedDate);
+
+        FindIdResponse response = userService.findId(userName,parsedDate);
 
         if (response != null) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(response, "아이디 찾기 성공"));
@@ -161,8 +165,8 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
     }
 
-    @PostMapping("/update-name")
-    public ResponseEntity<ApiResponse<String>> updateUserName(@RequestBody UpdateUserNameRequest request) {
+    @PostMapping("/update-name/old")
+    public ResponseEntity<ApiResponse<String>> updateUserNameOld(@RequestBody UpdateUserNameRequest request) {
         Long userId = request.getUserId();
         String newUserName = request.getUserName();
 
@@ -176,7 +180,7 @@ public class UserController {
                     .body((ApiResponse<String>) ApiResponse.createError("새로운 이름을 입력해주세요."));
         }
 
-        String result = userService.updateUserName(userId, newUserName);
+        String result = userService.updateUserNameOld(userId, newUserName);
         if (result.equals("사용자 이름 업데이트 성공")) {
             return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
         }
@@ -248,5 +252,105 @@ public class UserController {
     public ResponseEntity<ApiResponse<MatchYouthPoliciesResponse>> findMatchPolicies(@RequestParam("userId") Long userId) {
         MatchYouthPoliciesResponse result = userService.getMatchPolicies(userId);
         return ResponseEntity.ok(ApiResponse.createSuccess(result));
+    }
+
+    @GetMapping("/get-detailinfo")
+    public ResponseEntity<ApiResponse<UserDetailInfoResponse>> getDetailInfo(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<UserDetailInfoResponse>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        UserDetailInfoResponse userInfo = userService.getUserDetailInfo(user);
+        if (userInfo != null) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userInfo, "사용자 정보 조회 성공"));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body((ApiResponse<UserDetailInfoResponse>) ApiResponse.createError("사용자를 찾을 수 없습니다."));
+    }
+
+    @PostMapping("/update-name")
+    public ResponseEntity<ApiResponse<String>> updateUserName(HttpServletRequest request, @RequestParam String userName) {
+        String newUserName = userName;
+
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<String>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        if (newUserName == null || newUserName.equals("")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("새로운 이름을 입력해주세요."));
+        }
+
+        String result = userService.updateUserName(user, newUserName);
+        if (result.equals("사용자 이름 업데이트 성공")) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
+    }
+
+    @PostMapping("/update-birth")
+    public ResponseEntity<ApiResponse<String>> updateUserBirth(HttpServletRequest request, @RequestParam String userBirth) {
+        String newUserBirth = userBirth;
+
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<String>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        if (newUserBirth == null || newUserBirth.equals("")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<String>) ApiResponse.createError("새로운 생년월일 입력해주세요."));
+        }
+
+        String result = userService.updateUserBirth(user, newUserBirth);
+        if (result.equals("사용자 생년월일 업데이트 성공")) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
+    }
+
+    @PostMapping("/update-gender")
+    public ResponseEntity<ApiResponse<String>> updateUserGender(HttpServletRequest request, @RequestParam(required = false) Boolean userGender) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<String>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        // ✨ 수정: NullPointerException을 유발하는 라인을 삭제하고,
+        // ✨ 서비스 메소드에 'Boolean' 타입 그대로 전달합니다.
+        String result = userService.updateUserGender(user, userGender);
+
+        if (result.equals("사용자 성별 업데이트 성공")) {
+            return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, result));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body((ApiResponse<String>) ApiResponse.createError(result));
+    }
+
+
+    @GetMapping("/get-term")
+    public ResponseEntity<ApiResponse<?>> getTerm(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.badRequest().body((ApiResponse<?>) ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        boolean userTerm = userService.getTerm(user);
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(userTerm, "사용자 약관"));
+    }
+
+    @PostMapping("/add-term")
+    public ResponseEntity<ApiResponse<?>> addTerm(HttpServletRequest request) {
+        User user = tokenProvider.getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.createError("사용자 인증에 실패했습니다."));
+        }
+
+        String resultMessage = permissionService.agreeToOptionalTerm2(user);
+
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(null, resultMessage));
     }
 }
