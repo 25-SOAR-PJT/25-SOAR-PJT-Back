@@ -37,9 +37,6 @@ out/
 ### VS Code ###
 .vscode/
 
-#### 환경 변수 ###
-jwt.yml
-
 # Created by https://www.toptal.com/developers/gitignore/api/macos,windows,git,visualstudiocode,java,gradle,intellij
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,windows,git,visualstudiocode,java,gradle,intellij
 
