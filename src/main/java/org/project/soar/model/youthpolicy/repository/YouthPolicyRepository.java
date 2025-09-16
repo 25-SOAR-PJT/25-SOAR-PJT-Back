@@ -319,6 +319,7 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
 
     // 사업 마감: yyyyMMdd 정확히 일치
     List<YouthPolicy> findByBusinessPeriodEnd(String ymd);
+    List<YouthPolicy> findTop40ByOrderByCreatedAtDesc();
 
     /**
      * 페이징된 복합 검색
@@ -330,7 +331,6 @@ public interface YouthPolicyRepository extends JpaRepository<YouthPolicy, String
                                                     @Param("category") String category,
                                                     Pageable pageable);
 
-
-
+    List<YouthPolicy> findTop100ByOrderByCreatedAtDesc();
 }
 
