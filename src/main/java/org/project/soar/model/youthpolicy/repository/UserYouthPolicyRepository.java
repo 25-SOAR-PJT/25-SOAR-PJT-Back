@@ -50,5 +50,9 @@ public interface UserYouthPolicyRepository extends JpaRepository<UserYouthPolicy
     """)
     Set<String> findAppliedPolicyIds(@Param("user") User user,
                                      @Param("policies") List<YouthPolicy> policies);
+
+    void deleteByUserAndPolicy(User user, YouthPolicy policy);
+
+    List<UserYouthPolicy> findByUserOrderByAppliedAtDesc(User user);
 }
 

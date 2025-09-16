@@ -83,7 +83,7 @@ public class CommentController {
         }
 
         int count = commentService.getCommentCount(user);
-        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "신청한 정책 개수 조회됨"));
+        return ResponseEntity.ok(ApiResponse.createSuccessWithMessage(count, "작성한 댓글 개수 조회됨"));
     }
 
 }

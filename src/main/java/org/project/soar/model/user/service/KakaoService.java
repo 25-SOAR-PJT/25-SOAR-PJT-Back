@@ -129,7 +129,7 @@ public class KakaoService {
                     .userName(nickname)
                     .userEmail(kakaoId + "@kakao.com") // 임시 이메일 설정
                     .userPassword("") // 소셜 로그인이라 비밀번호 설정 없음
-                    .userGender(true) 
+                    .userGender(null)
                     .userBirthDate(null)
                     .userRole(Role.USER)
                     .build();

@@ -32,8 +32,8 @@ public class User extends BaseTimeEntity {
     @Column(name = "user_phone_number", length = 20)
     private String userPhoneNumber;
 
-    @Column(name = "user_gender", length = 10)
-    private boolean userGender;
+    @Column(name = "user_gender", length = 10, nullable = true)
+    private Boolean userGender;
 
     @Column(name = "user_email", length = 100, unique = true)
     private String userEmail;
@@ -52,9 +52,19 @@ public class User extends BaseTimeEntity {
     public void updatePassword(String userPassword) {
         this.userPassword = userPassword;
     }
+
     public void updateUserName(String userName) {
         this.userName = userName;
     }
+
+    public void updateUserBirth(String userBirthDate) {
+        this.userBirthDate = LocalDate.parse(userBirthDate);
+    }
+
+    public void updateUserGender(Boolean userGender) {
+        this.userGender = userGender;
+    }
+
     public void updateUserRole(Role role) {
         this.userRole = role;
     }

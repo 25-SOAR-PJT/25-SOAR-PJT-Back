@@ -10,22 +10,22 @@ import org.project.soar.model.user.User;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Entity
-@Table(name = "permission") // 앱 권한 및 약관 동의 테이블
+@Table(name = "permission")
 public class Permission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "permission_id", nullable = false) // 권한 ID
+    @Column(name = "permission_id", nullable = false)
     private Long permissionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false) // 사용자 ID
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "type", nullable = false, length = 50) // 약관 유형 또는 권한 유형
+    @Column(name = "type", nullable = false, length = 50)
     private String type;
 
-    @Column(name = "status", nullable = false) // 동의 여부: true = 동의, false = 미동의
+    @Column(name = "status", nullable = false)
     private boolean status;
 
     @Builder
@@ -34,5 +34,10 @@ public class Permission {
         this.user = user;
         this.type = type;
         this.status = status;
+    }
+
+    // ✨ 새로운 업데이트 메서드 추가
+    public void updateStatus(boolean newStatus) {
+        this.status = newStatus;
     }
 }
