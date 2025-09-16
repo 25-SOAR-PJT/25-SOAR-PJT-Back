@@ -36,10 +36,12 @@ public class SecurityConfig {
             "/api/field/", "/api/tag/",
             "/api/user-tag/", "/api/user-tag/**", "/api/user-tag/all",
             "/api/youth-policy","/api/youth-policy/sync","/api/youth-policy/**","/api/auth/match-policies",
-            "/api/youth-policy-tag/", "/api/youth-policy-tag/tag", "/api/youth-policy-tag/tags",
+            "/api/youth-policy-tag/", "/api/youth-policy-tag/tag", "/api/youth-policy-tag/tags","/api/youth-policy-tag/tags/qs",
             "api/chatgpt/promptManagement",
             "/api/banner/**",
-            "/api/comment/**", "/api/comment/","/api/youth-policy/calendar/**"
+            "/api/comment/**", "/api/comment/","/api/youth-policy/calendar/**",
+            "/api/user-policies/popular", "/api/user-policies/popular/age-group", "/api/user-policies/popularName","/api/user-policies/mainLoginTags",
+            "/api/youth-policy/search/multi"
     };
 
     @Bean
