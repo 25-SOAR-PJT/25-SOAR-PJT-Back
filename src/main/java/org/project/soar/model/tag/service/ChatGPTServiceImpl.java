@@ -172,7 +172,7 @@ public class ChatGPTServiceImpl implements ChatGPTService{
     }
 
     public List<YouthPolicyTag> runPrompt(int retryCount) throws InterruptedException {
-        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop10ByOrderByCreatedAtDesc();
+        List<YouthPolicy> top10YouthPolicies = youthPolicyRepository.findTop100ByOrderByCreatedAtDesc();
         List<YouthPolicyOpenAI> policyOpenAIs = top10YouthPolicies.stream()
                 .map(youthPolicy -> new YouthPolicyOpenAI(
                         youthPolicy.getPolicyId(),
