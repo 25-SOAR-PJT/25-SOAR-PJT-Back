@@ -3,6 +3,8 @@ package org.project.soar.model.user.dto;
 import java.sql.Date;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,7 +21,15 @@ public class SignUpRequest {
     private final List<Boolean> agreedTerms;
 
     @Builder
-    public SignUpRequest(String userName, Date userBirthDate, String userPhoneNumber, Boolean userGender, String userEmail, String userPassword, String otp, List<Boolean> agreedTerms) {
+    @JsonCreator
+    public SignUpRequest(@JsonProperty("userName") String userName,
+                         @JsonProperty("userBirthDate") Date userBirthDate,
+                         @JsonProperty("userPhoneNumber") String userPhoneNumber,
+                         @JsonProperty("userGender") boolean userGender,
+                         @JsonProperty("userEmail") String userEmail,
+                         @JsonProperty("userPassword") String userPassword,
+                         @JsonProperty("otp") String otp,
+                         @JsonProperty("agreedTerms") List<Boolean> agreedTerms) {
         this.userName = userName;
         this.userBirthDate = userBirthDate;
         this.userPhoneNumber = userPhoneNumber;
