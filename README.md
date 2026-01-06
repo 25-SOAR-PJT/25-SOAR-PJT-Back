@@ -1,6 +1,7 @@
 # 25-SOAR-PJT-Back
 
 ### 서비스 런칭
+(2025.11.25 ~ 진행중) <br/>
 https://play.google.com/store/apps/details?id=my_app.soar&hl=ko
 
 ### 최종 결과
